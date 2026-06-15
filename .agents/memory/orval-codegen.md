@@ -10,3 +10,8 @@ description: Why a single API operation must not mix path params and query param
 - Symptom: `orval` prints `api-client-react Cleaning output folder` then hangs forever (codegen times out), even though manual `rm -rf` of the generated dirs is instant.
 - **Why:** the `api-server` (esbuild watch) and `cohort` (vite) dev workflows watch `lib/api-client-react` / `lib/api-zod`; their re-optimize churn starves/blocks orval mid-generation.
 - **How to apply:** before running codegen, stop those two dev workflows (kill the processes / let the workflow go to `failed`), run codegen, then `restart_workflow` both. mockup-sandbox doesn't import the generated dirs and can stay running.
+
+## Running orval from the bash tool: run it backgrounded + poll the log
+- Symptom: invoking orval in the foreground via the bash tool returns -1/no-output (the tool harness kills it) even when orval itself would finish.
+- **How to apply:** launch detached and poll, e.g. `(timeout 75 pnpm exec orval --config ./orval.config.ts > /tmp/orval.log 2>&1; echo RC=$? >> /tmp/orval.log) &` then `sleep ~80` and `cat /tmp/orval.log`. Same pattern works for long `tsc`/typecheck runs that otherwise get killed.
+- **Why:** the harness's foreground watchdog, not orval, is the thing aborting; detaching frees it from that watchdog.

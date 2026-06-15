@@ -44,6 +44,93 @@ export interface FleetSummary {
   connectedPlatforms: number;
 }
 
+export type FleetLayerScoreKey = typeof FleetLayerScoreKey[keyof typeof FleetLayerScoreKey];
+
+
+export const FleetLayerScoreKey = {
+  efficacy: 'efficacy',
+  efficiency: 'efficiency',
+  adoption: 'adoption',
+  governance: 'governance',
+  value: 'value',
+} as const;
+
+export type FleetLayerScoreSeverity = typeof FleetLayerScoreSeverity[keyof typeof FleetLayerScoreSeverity];
+
+
+export const FleetLayerScoreSeverity = {
+  critical: 'critical',
+  high: 'high',
+  medium: 'medium',
+  stable: 'stable',
+} as const;
+
+export interface FleetLayerScore {
+  key: FleetLayerScoreKey;
+  label: string;
+  score: number;
+  severity: FleetLayerScoreSeverity;
+  trend: number;
+  agentsAtRisk: number;
+}
+
+export interface FleetTrendPoint {
+  period: string;
+  efficacy: number;
+  efficiency: number;
+  adoption: number;
+  governance: number;
+  value: number;
+  health: number;
+}
+
+export interface FleetRoi {
+  monthlyValue: number;
+  monthlyCost: number;
+  netValue: number;
+  roiPercent: number;
+  profitableAgents: number;
+}
+
+export type AgentRefCurrentVerdict = typeof AgentRefCurrentVerdict[keyof typeof AgentRefCurrentVerdict];
+
+
+export const AgentRefCurrentVerdict = {
+  promote: 'promote',
+  mentor: 'mentor',
+  retire: 'retire',
+  observation: 'observation',
+} as const;
+
+export type AgentRefSeverity = typeof AgentRefSeverity[keyof typeof AgentRefSeverity];
+
+
+export const AgentRefSeverity = {
+  critical: 'critical',
+  high: 'high',
+  medium: 'medium',
+  stable: 'stable',
+} as const;
+
+export interface AgentRef {
+  id: string;
+  name: string;
+  platform: string;
+  role: string;
+  healthScore: number;
+  currentVerdict: AgentRefCurrentVerdict;
+  severity: AgentRefSeverity;
+}
+
+export interface FleetKpis {
+  layers: FleetLayerScore[];
+  trend: FleetTrendPoint[];
+  roi: FleetRoi;
+  topPerformers: AgentRef[];
+  atRisk: AgentRef[];
+  totalEvaluations: number;
+}
+
 export type AgentStatus = typeof AgentStatus[keyof typeof AgentStatus];
 
 

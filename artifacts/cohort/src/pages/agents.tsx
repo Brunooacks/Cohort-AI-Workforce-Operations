@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Filter, Plus, ChevronRight } from "lucide-react";
+import { Search, Filter, Plus, ChevronRight, AlertTriangle } from "lucide-react";
 import { Link } from "wouter";
 import { useState } from "react";
 

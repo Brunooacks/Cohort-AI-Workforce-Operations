@@ -48,6 +48,57 @@ export const GetFleetSummaryResponse = zod.object({
 
 
 /**
+ * Aggregated 5-layer KPI analytics, trends, ROI and rankings across the whole fleet
+ * @summary Fleet KPI analytics
+ */
+export const GetFleetKpisResponse = zod.object({
+  "layers": zod.array(zod.object({
+  "key": zod.enum(['efficacy', 'efficiency', 'adoption', 'governance', 'value']),
+  "label": zod.string(),
+  "score": zod.number(),
+  "severity": zod.enum(['critical', 'high', 'medium', 'stable']),
+  "trend": zod.number(),
+  "agentsAtRisk": zod.number()
+})),
+  "trend": zod.array(zod.object({
+  "period": zod.string(),
+  "efficacy": zod.number(),
+  "efficiency": zod.number(),
+  "adoption": zod.number(),
+  "governance": zod.number(),
+  "value": zod.number(),
+  "health": zod.number()
+})),
+  "roi": zod.object({
+  "monthlyValue": zod.number(),
+  "monthlyCost": zod.number(),
+  "netValue": zod.number(),
+  "roiPercent": zod.number(),
+  "profitableAgents": zod.number()
+}),
+  "topPerformers": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "platform": zod.string(),
+  "role": zod.string(),
+  "healthScore": zod.number(),
+  "currentVerdict": zod.enum(['promote', 'mentor', 'retire', 'observation']),
+  "severity": zod.enum(['critical', 'high', 'medium', 'stable'])
+})),
+  "atRisk": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "platform": zod.string(),
+  "role": zod.string(),
+  "healthScore": zod.number(),
+  "currentVerdict": zod.enum(['promote', 'mentor', 'retire', 'observation']),
+  "severity": zod.enum(['critical', 'high', 'medium', 'stable'])
+})),
+  "totalEvaluations": zod.number()
+})
+
+
+/**
  * Illusory-victory detector alerts across the whole fleet
  * @summary Active fleet alerts
  */

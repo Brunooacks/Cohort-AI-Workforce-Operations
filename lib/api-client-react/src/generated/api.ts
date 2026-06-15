@@ -31,6 +31,7 @@ import type {
   DiscoveryResult,
   Error,
   Evaluation,
+  FleetKpis,
   FleetSummary,
   HealthStatus,
   IdentityUpdate,
@@ -197,6 +198,84 @@ export function useGetFleetSummary<TData = Awaited<ReturnType<typeof getFleetSum
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetFleetSummaryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetFleetKpisUrl = () => {
+
+
+
+
+  return `/api/fleet/kpis`
+}
+
+/**
+ * Aggregated 5-layer KPI analytics, trends, ROI and rankings across the whole fleet
+ * @summary Fleet KPI analytics
+ */
+export const getFleetKpis = async ( options?: RequestInit): Promise<FleetKpis> => {
+
+  return customFetch<FleetKpis>(getGetFleetKpisUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFleetKpisQueryKey = () => {
+    return [
+    `/api/fleet/kpis`
+    ] as const;
+    }
+
+
+export const getGetFleetKpisQueryOptions = <TData = Awaited<ReturnType<typeof getFleetKpis>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFleetKpis>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFleetKpisQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFleetKpis>>> = ({ signal }) => getFleetKpis({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFleetKpis>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFleetKpisQueryResult = NonNullable<Awaited<ReturnType<typeof getFleetKpis>>>
+export type GetFleetKpisQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Fleet KPI analytics
+ */
+
+export function useGetFleetKpis<TData = Awaited<ReturnType<typeof getFleetKpis>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFleetKpis>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFleetKpisQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

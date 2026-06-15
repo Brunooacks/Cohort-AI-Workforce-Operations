@@ -45,6 +45,20 @@ paths:
               schema:
                 $ref: "#/components/schemas/FleetSummary"
 
+  /fleet/kpis:
+    get:
+      operationId: getFleetKpis
+      tags: [fleet]
+      summary: Fleet KPI analytics
+      description: Aggregated 5-layer KPI analytics, trends, ROI and rankings across the whole fleet
+      responses:
+        "200":
+          description: Fleet KPI analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FleetKpis"
+
   /fleet/alerts:
     get:
       operationId: listFleetAlerts
@@ -481,6 +495,136 @@ components:
           type: number
         connectedPlatforms:
           type: integer
+
+    FleetKpis:
+      type: object
+      required:
+        - layers
+        - trend
+        - roi
+        - topPerformers
+        - atRisk
+        - totalEvaluations
+      properties:
+        layers:
+          type: array
+          items:
+            $ref: "#/components/schemas/FleetLayerScore"
+        trend:
+          type: array
+          items:
+            $ref: "#/components/schemas/FleetTrendPoint"
+        roi:
+          $ref: "#/components/schemas/FleetRoi"
+        topPerformers:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentRef"
+        atRisk:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentRef"
+        totalEvaluations:
+          type: integer
+
+    FleetLayerScore:
+      type: object
+      required:
+        - key
+        - label
+        - score
+        - severity
+        - trend
+        - agentsAtRisk
+      properties:
+        key:
+          type: string
+          enum: [efficacy, efficiency, adoption, governance, value]
+        label:
+          type: string
+        score:
+          type: number
+        severity:
+          type: string
+          enum: [critical, high, medium, stable]
+        trend:
+          type: number
+        agentsAtRisk:
+          type: integer
+
+    FleetTrendPoint:
+      type: object
+      required:
+        - period
+        - efficacy
+        - efficiency
+        - adoption
+        - governance
+        - value
+        - health
+      properties:
+        period:
+          type: string
+        efficacy:
+          type: number
+        efficiency:
+          type: number
+        adoption:
+          type: number
+        governance:
+          type: number
+        value:
+          type: number
+        health:
+          type: number
+
+    FleetRoi:
+      type: object
+      required:
+        - monthlyValue
+        - monthlyCost
+        - netValue
+        - roiPercent
+        - profitableAgents
+      properties:
+        monthlyValue:
+          type: number
+        monthlyCost:
+          type: number
+        netValue:
+          type: number
+        roiPercent:
+          type: number
+        profitableAgents:
+          type: integer
+
+    AgentRef:
+      type: object
+      required:
+        - id
+        - name
+        - platform
+        - role
+        - healthScore
+        - currentVerdict
+        - severity
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        platform:
+          type: string
+        role:
+          type: string
+        healthScore:
+          type: number
+        currentVerdict:
+          type: string
+          enum: [promote, mentor, retire, observation]
+        severity:
+          type: string
+          enum: [critical, high, medium, stable]
 
     Agent:
       type: object
