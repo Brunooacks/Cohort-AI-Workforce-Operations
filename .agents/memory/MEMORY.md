@@ -1,2 +1,2 @@
-- [Orval path+query collision](orval-codegen.md) — an operation with BOTH path and query params makes orval emit a colliding `<Op>Params` in the zod barrel; keep ops path-only or query-only.
-- [Cohort product & design](cohort.md) — what Cohort is, chosen design direction (Notion-neutral), vocabulary, and architecture decisions.
+- [Landing dark vs app light](landing-vs-app-theme.md) — landing is bold cinematic dark (Veltrix-inspired), authenticated app stays light "Neutro Notion"; keep landing dark self-contained, never toggle global .dark.
+- [Orval codegen](orval-codegen.md) — stop dev workflows before running Orval codegen or it hangs watching files.
