@@ -22,6 +22,7 @@ type VerdictKind = "promote" | "mentor" | "retire";
 
 type Scenario = {
   id: string;
+  category: string;
   agent: { name: string; platform: string; role: string };
   layers: LayerScore[];
   health: number;
@@ -38,6 +39,7 @@ const LAYER_LABELS = ["Eficácia", "Eficiência", "Adoção", "Governança", "Va
 const SCENARIOS: Scenario[] = [
   {
     id: "atlas",
+    category: "Suporte",
     agent: { name: "Atlas", platform: "Zendesk", role: "Triagem de suporte N1" },
     layers: [
       { label: "Eficácia", score: 91 },
@@ -59,6 +61,7 @@ const SCENARIOS: Scenario[] = [
   },
   {
     id: "vega",
+    category: "Marketing",
     agent: { name: "Vega", platform: "HubSpot", role: "Qualificação de leads" },
     layers: [
       { label: "Eficácia", score: 72 },
@@ -81,6 +84,7 @@ const SCENARIOS: Scenario[] = [
   },
   {
     id: "orion",
+    category: "Produtividade",
     agent: { name: "Orion", platform: "Notion AI", role: "Resumo de reuniões" },
     layers: [
       { label: "Eficácia", score: 41 },
@@ -98,6 +102,51 @@ const SCENARIOS: Scenario[] = [
       "Encerrar acesso às integrações",
       "Arquivar Carteira de Trabalho",
       "Migrar tarefas para fluxo nativo",
+    ],
+  },
+  {
+    id: "lyra",
+    category: "Vendas",
+    agent: { name: "Lyra", platform: "Salesforce", role: "Cadência de SDR" },
+    layers: [
+      { label: "Eficácia", score: 85 },
+      { label: "Eficiência", score: 90 },
+      { label: "Adoção", score: 76 },
+      { label: "Governança", score: 81 },
+      { label: "Valor", score: 87 },
+    ],
+    health: 84,
+    illusoryWin: false,
+    verdict: "promote",
+    confidence: 90,
+    window: "Próximo trimestre",
+    actions: [
+      "Expandir para contas enterprise",
+      "Conectar ao forecast de receita",
+      "Aumentar cota de cadências ativas",
+    ],
+  },
+  {
+    id: "nova",
+    category: "Dados",
+    agent: { name: "Nova", platform: "Snowflake", role: "Qualidade de dados" },
+    layers: [
+      { label: "Eficácia", score: 77 },
+      { label: "Eficiência", score: 69 },
+      { label: "Adoção", score: 54 },
+      { label: "Governança", score: 71 },
+      { label: "Valor", score: 61 },
+    ],
+    health: 67,
+    illusoryWin: true,
+    illusoryNote: "Muitos alertas, mas alta taxa de falsos positivos",
+    verdict: "mentor",
+    confidence: 80,
+    window: "Próximas 6 semanas",
+    actions: [
+      "Reduzir falsos positivos de alerta",
+      "Ampliar cobertura de testes de dados",
+      "Treinar squad de dados no fluxo",
     ],
   },
 ];
@@ -147,18 +196,37 @@ export default function LandingDemo() {
   const reduce = useReducedMotion() ?? false;
   const [step, setStep] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [pinned, setPinned] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pinnedRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    pinnedRef.current = pinned;
+  }, [pinned]);
 
   const scenarioIndex = Math.floor(step / PHASES.length) % SCENARIOS.length;
   const phase = step % PHASES.length; // 0 admission, 1 evaluation, 2 verdict
   const scenario = SCENARIOS[scenarioIndex];
 
-  const advance = useCallback(() => setStep((s) => (s + 1) % TOTAL_STEPS), []);
-  const goPrev = useCallback(
-    () => setStep((s) => (s - 1 + TOTAL_STEPS) % TOTAL_STEPS),
-    [],
-  );
-  const goToScenario = useCallback((i: number) => setStep(i * PHASES.length), []);
+  // Step within the pinned scenario's phases, or across the whole cycle when unpinned.
+  const stepBy = useCallback((dir: 1 | -1) => {
+    setStep((s) => {
+      const pin = pinnedRef.current;
+      if (pin !== null) {
+        const ph = s % PHASES.length;
+        return pin * PHASES.length + ((ph + dir + PHASES.length) % PHASES.length);
+      }
+      return (s + dir + TOTAL_STEPS) % TOTAL_STEPS;
+    });
+  }, []);
+
+  const advance = useCallback(() => stepBy(1), [stepBy]);
+  const goPrev = useCallback(() => stepBy(-1), [stepBy]);
+  const goToScenario = useCallback((i: number) => {
+    setPinned(i);
+    setStep(i * PHASES.length);
+  }, []);
+  const resumeAuto = useCallback(() => setPinned(null), []);
 
   useEffect(() => {
     if (paused) return;
@@ -184,6 +252,54 @@ export default function LandingDemo() {
         style={{ background: "radial-gradient(60% 60% at 50% 0%, hsl(var(--primary) / 0.2), transparent 70%)" }}
       />
 
+      {/* ── Scenario selector (jump by platform) ── */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <span className="mr-1 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+          Ver caso
+        </span>
+        <button
+          type="button"
+          onClick={resumeAuto}
+          aria-pressed={pinned === null}
+          className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+            pinned === null
+              ? "bg-primary text-primary-foreground"
+              : "border border-card-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground"
+          }`}
+        >
+          Automático
+        </button>
+        {SCENARIOS.map((s, i) => {
+          const isPinned = pinned === i;
+          const isPlaying = pinned === null && scenarioIndex === i;
+          return (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => goToScenario(i)}
+              aria-pressed={isPinned}
+              title={`${s.agent.name} · ${s.agent.role}`}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                isPinned
+                  ? "bg-primary text-primary-foreground"
+                  : isPlaying
+                    ? "border border-primary/50 bg-primary/5 text-primary"
+                    : "border border-card-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground"
+              }`}
+            >
+              {s.agent.platform}
+              <span
+                className={`font-mono text-[10px] uppercase tracking-wider ${
+                  isPinned ? "text-primary-foreground/70" : "text-muted-foreground/70"
+                }`}
+              >
+                {s.category}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       <div className="overflow-hidden rounded-2xl border border-card-border bg-card shadow-xl">
         {/* ── Top bar: live + step tracker ── */}
         <div className="flex flex-col gap-3 border-b border-card-border px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -194,7 +310,9 @@ export default function LandingDemo() {
               )}
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-chart-1" />
             </span>
-            Demo ao vivo · ciclo do comitê
+            {pinned === null
+              ? "Demo ao vivo · ciclo do comitê"
+              : `Cenário fixado · ${scenario.agent.platform}`}
           </div>
 
           <div className="flex items-center gap-1.5">
