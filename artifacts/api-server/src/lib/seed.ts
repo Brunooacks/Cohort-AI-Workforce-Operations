@@ -487,6 +487,135 @@ const SEED_AGENTS: SeedAgentSpec[] = [
   },
 ];
 
+const VERDICT_PLAN: Record<string, NextAction[]> = {
+  promote: [
+    {
+      action: "Ampliar escopo para um segundo time",
+      owner: "Patrocinador",
+      due: "30 dias",
+    },
+    {
+      action: "Documentar boas práticas do agente",
+      owner: "Dono técnico",
+      due: "15 dias",
+    },
+  ],
+  mentor: [
+    {
+      action: "Definir plano de melhoria de 2 camadas mais fracas",
+      owner: "Dono técnico",
+      due: "21 dias",
+    },
+    {
+      action: "Revisar limites de autonomia",
+      owner: "Comitê",
+      due: "14 dias",
+    },
+  ],
+  observation: [
+    {
+      action: "Manter em observação com revisão quinzenal",
+      owner: "Comitê",
+      due: "14 dias",
+    },
+  ],
+  retire: [
+    {
+      action: "Preparar plano de desligamento e transferência",
+      owner: "Dono de negócio",
+      due: "30 dias",
+    },
+    {
+      action: "Arquivar histórico de decisões",
+      owner: "Governança",
+      due: "45 dias",
+    },
+  ],
+};
+
+interface HistoricalDecision {
+  verdict: "promote" | "mentor" | "retire" | "observation";
+  decision: "approved" | "disagreed" | "exported";
+  decidedBy: string;
+  daysAgo: number;
+  confidence: number;
+  executionWindow: string;
+  rationale: string;
+}
+
+// Past committee decisions so the audit trail and "decisões recentes" have history.
+const HISTORICAL_DECISIONS: Record<string, HistoricalDecision[]> = {
+  asst_supporthero: [
+    {
+      verdict: "promote",
+      decision: "approved",
+      decidedBy: "Comitê de Experiência",
+      daysAgo: 12,
+      confidence: 88.5,
+      executionWindow: "60 dias",
+      rationale:
+        "Eficácia e CSAT acima da meta por dois ciclos; aprovada ampliação para um segundo time.",
+    },
+    {
+      verdict: "mentor",
+      decision: "approved",
+      decidedBy: "Marina Couto (Head de CX)",
+      daysAgo: 48,
+      confidence: 74.2,
+      executionWindow: "30 dias",
+      rationale:
+        "Adoção sólida, mas governança exigia acompanhamento antes de promover.",
+    },
+  ],
+  sf_renewals: [
+    {
+      verdict: "mentor",
+      decision: "disagreed",
+      decidedBy: "Comitê Comercial",
+      daysAgo: 8,
+      confidence: 69.0,
+      executionWindow: "30 dias",
+      rationale:
+        "Comitê discordou: ROI em alta com conformidade em queda exige auditoria antes de mentoria.",
+    },
+  ],
+  zd_triagebot: [
+    {
+      verdict: "promote",
+      decision: "exported",
+      decidedBy: "Comitê de Experiência",
+      daysAgo: 21,
+      confidence: 81.3,
+      executionWindow: "60 dias",
+      rationale:
+        "Acurácia de roteamento consistente; decisão exportada para o comitê executivo.",
+    },
+  ],
+  sf_leadqual: [
+    {
+      verdict: "retire",
+      decision: "approved",
+      decidedBy: "Rafael Lima (Head de Vendas)",
+      daysAgo: 5,
+      confidence: 76.8,
+      executionWindow: "30 dias",
+      rationale:
+        "Volume alto com conversão real em queda; aprovada aposentadoria planejada.",
+    },
+  ],
+};
+
+const RATIONALE: Record<string, string> = {
+  promote:
+    "Desempenho consistente acima da meta em eficácia e valor, com governança saudável.",
+  mentor:
+    "Resultados promissores, mas com camadas que precisam de acompanhamento antes de ampliar o escopo.",
+  observation:
+    "Sinais ainda mistos; manter observação para confirmar a tendência antes de decidir.",
+  retire:
+    "Custo se aproxima do valor gerado e há sinais de vitória ilusória; recomenda-se aposentadoria planejada.",
+};
+
 function buildMetricSeries(externalId: string, layers: KpiLayer[]) {
   const byKey = Object.fromEntries(layers.map((l) => [l.key, l.score]));
   const points: {
@@ -606,6 +735,30 @@ export async function ensureSeed(): Promise<void> {
         rationale: spec.rationale,
         decision: "pending",
       });
+
+      const history = HISTORICAL_DECISIONS[spec.externalId];
+      if (history?.length) {
+        await tx.insert(verdicts).values(
+          history.map((h) => {
+            const decidedAt = new Date(
+              Date.now() - h.daysAgo * 24 * 60 * 60 * 1000,
+            );
+            return {
+              agentId: agent.id,
+              verdict: h.verdict,
+              confidence: h.confidence,
+              executionWindow: h.executionWindow,
+              suggestedSponsor: spec.governanceSponsor,
+              nextActions: VERDICT_PLAN[h.verdict] ?? [],
+              rationale: h.rationale,
+              decision: h.decision,
+              decidedBy: h.decidedBy,
+              decidedAt,
+              createdAt: decidedAt,
+            };
+          }),
+        );
+      }
 
       if (spec.alerts?.length) {
         await tx.insert(alerts).values(

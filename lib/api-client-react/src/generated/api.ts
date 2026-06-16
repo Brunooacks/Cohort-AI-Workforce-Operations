@@ -31,6 +31,9 @@ import type {
   DiscoveryResult,
   Error,
   Evaluation,
+  FleetBenchmarks,
+  FleetDecision,
+  FleetGovernance,
   FleetKpis,
   FleetSummary,
   HealthStatus,
@@ -276,6 +279,240 @@ export function useGetFleetKpis<TData = Awaited<ReturnType<typeof getFleetKpis>>
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetFleetKpisQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListFleetDecisionsUrl = () => {
+
+
+
+
+  return `/api/fleet/decisions`
+}
+
+/**
+ * Pending and decided committee verdicts across the whole fleet, for the command home and audit trail.
+ * @summary Fleet-wide verdict decisions
+ */
+export const listFleetDecisions = async ( options?: RequestInit): Promise<FleetDecision[]> => {
+
+  return customFetch<FleetDecision[]>(getListFleetDecisionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListFleetDecisionsQueryKey = () => {
+    return [
+    `/api/fleet/decisions`
+    ] as const;
+    }
+
+
+export const getListFleetDecisionsQueryOptions = <TData = Awaited<ReturnType<typeof listFleetDecisions>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFleetDecisions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListFleetDecisionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listFleetDecisions>>> = ({ signal }) => listFleetDecisions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listFleetDecisions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListFleetDecisionsQueryResult = NonNullable<Awaited<ReturnType<typeof listFleetDecisions>>>
+export type ListFleetDecisionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Fleet-wide verdict decisions
+ */
+
+export function useListFleetDecisions<TData = Awaited<ReturnType<typeof listFleetDecisions>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFleetDecisions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListFleetDecisionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetFleetGovernanceUrl = () => {
+
+
+
+
+  return `/api/fleet/governance`
+}
+
+/**
+ * Compliance summary, responsibility chain grouped by business owner and audit trail.
+ * @summary Fleet governance overview
+ */
+export const getFleetGovernance = async ( options?: RequestInit): Promise<FleetGovernance> => {
+
+  return customFetch<FleetGovernance>(getGetFleetGovernanceUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFleetGovernanceQueryKey = () => {
+    return [
+    `/api/fleet/governance`
+    ] as const;
+    }
+
+
+export const getGetFleetGovernanceQueryOptions = <TData = Awaited<ReturnType<typeof getFleetGovernance>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFleetGovernance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFleetGovernanceQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFleetGovernance>>> = ({ signal }) => getFleetGovernance({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFleetGovernance>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFleetGovernanceQueryResult = NonNullable<Awaited<ReturnType<typeof getFleetGovernance>>>
+export type GetFleetGovernanceQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Fleet governance overview
+ */
+
+export function useGetFleetGovernance<TData = Awaited<ReturnType<typeof getFleetGovernance>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFleetGovernance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFleetGovernanceQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetFleetBenchmarksUrl = () => {
+
+
+
+
+  return `/api/fleet/benchmarks`
+}
+
+/**
+ * ROI and accuracy rankings across the whole fleet.
+ * @summary Fleet benchmarks
+ */
+export const getFleetBenchmarks = async ( options?: RequestInit): Promise<FleetBenchmarks> => {
+
+  return customFetch<FleetBenchmarks>(getGetFleetBenchmarksUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFleetBenchmarksQueryKey = () => {
+    return [
+    `/api/fleet/benchmarks`
+    ] as const;
+    }
+
+
+export const getGetFleetBenchmarksQueryOptions = <TData = Awaited<ReturnType<typeof getFleetBenchmarks>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFleetBenchmarks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFleetBenchmarksQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFleetBenchmarks>>> = ({ signal }) => getFleetBenchmarks({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFleetBenchmarks>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFleetBenchmarksQueryResult = NonNullable<Awaited<ReturnType<typeof getFleetBenchmarks>>>
+export type GetFleetBenchmarksQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Fleet benchmarks
+ */
+
+export function useGetFleetBenchmarks<TData = Awaited<ReturnType<typeof getFleetBenchmarks>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFleetBenchmarks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFleetBenchmarksQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

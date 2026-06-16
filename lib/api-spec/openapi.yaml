@@ -59,6 +59,50 @@ paths:
               schema:
                 $ref: "#/components/schemas/FleetKpis"
 
+  /fleet/decisions:
+    get:
+      operationId: listFleetDecisions
+      tags: [fleet]
+      summary: Fleet-wide verdict decisions
+      description: Pending and decided committee verdicts across the whole fleet, for the command home and audit trail.
+      responses:
+        "200":
+          description: Fleet decisions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FleetDecision"
+
+  /fleet/governance:
+    get:
+      operationId: getFleetGovernance
+      tags: [fleet]
+      summary: Fleet governance overview
+      description: Compliance summary, responsibility chain grouped by business owner and audit trail.
+      responses:
+        "200":
+          description: Fleet governance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FleetGovernance"
+
+  /fleet/benchmarks:
+    get:
+      operationId: getFleetBenchmarks
+      tags: [fleet]
+      summary: Fleet benchmarks
+      description: ROI and accuracy rankings across the whole fleet.
+      responses:
+        "200":
+          description: Fleet benchmarks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FleetBenchmarks"
+
   /fleet/alerts:
     get:
       operationId: listFleetAlerts
@@ -462,15 +506,32 @@ components:
         stable:
           type: integer
 
+    StatusBreakdown:
+      type: object
+      required: [observation, active, flagged, retiring, retired]
+      properties:
+        observation:
+          type: integer
+        active:
+          type: integer
+        flagged:
+          type: integer
+        retiring:
+          type: integer
+        retired:
+          type: integer
+
     FleetSummary:
       type: object
       required:
         - totalAgents
         - byVerdict
         - bySeverity
+        - byStatus
         - byPlatform
         - avgHealthScore
         - activeAlerts
+        - pendingDecisions
         - estimatedMonthlyValue
         - estimatedMonthlyCost
         - connectedPlatforms
@@ -481,6 +542,10 @@ components:
           $ref: "#/components/schemas/VerdictBreakdown"
         bySeverity:
           $ref: "#/components/schemas/SeverityBreakdown"
+        byStatus:
+          $ref: "#/components/schemas/StatusBreakdown"
+        pendingDecisions:
+          type: integer
         byPlatform:
           type: array
           items:
@@ -1207,3 +1272,204 @@ components:
           type: array
           items:
             type: string
+
+    FleetDecision:
+      type: object
+      required:
+        - id
+        - agentId
+        - agentName
+        - agentRole
+        - platform
+        - verdict
+        - confidence
+        - executionWindow
+        - decision
+        - createdAt
+      properties:
+        id:
+          type: string
+        agentId:
+          type: string
+        agentName:
+          type: string
+        agentRole:
+          type: string
+        platform:
+          type: string
+        verdict:
+          type: string
+          enum: [promote, mentor, retire, observation]
+        confidence:
+          type: number
+        executionWindow:
+          type: string
+        decision:
+          type: string
+          enum: [pending, approved, disagreed, exported]
+        decidedBy:
+          type: ["string", "null"]
+        decidedAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    GovernanceSummary:
+      type: object
+      required:
+        - totalAgents
+        - compliantAgents
+        - avgGovernanceScore
+        - agentsInReview
+        - openAlerts
+        - fullyOwnedAgents
+      properties:
+        totalAgents:
+          type: integer
+        compliantAgents:
+          type: integer
+        avgGovernanceScore:
+          type: number
+        agentsInReview:
+          type: integer
+        openAlerts:
+          type: integer
+        fullyOwnedAgents:
+          type: integer
+
+    GovernanceAgentRef:
+      type: object
+      required:
+        - id
+        - name
+        - role
+        - status
+        - healthScore
+        - governanceScore
+        - technicalOwner
+        - governanceSponsor
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+        status:
+          type: string
+          enum: [observation, active, flagged, retiring, retired]
+        healthScore:
+          type: number
+        governanceScore:
+          type: number
+        technicalOwner:
+          type: string
+        governanceSponsor:
+          type: string
+
+    OwnerGroup:
+      type: object
+      required:
+        - businessOwner
+        - agentCount
+        - agents
+      properties:
+        businessOwner:
+          type: string
+        agentCount:
+          type: integer
+        agents:
+          type: array
+          items:
+            $ref: "#/components/schemas/GovernanceAgentRef"
+
+    FleetGovernance:
+      type: object
+      required:
+        - summary
+        - responsibilityChain
+        - auditTrail
+      properties:
+        summary:
+          $ref: "#/components/schemas/GovernanceSummary"
+        responsibilityChain:
+          type: array
+          items:
+            $ref: "#/components/schemas/OwnerGroup"
+        auditTrail:
+          type: array
+          items:
+            $ref: "#/components/schemas/FleetDecision"
+
+    BenchmarkRoiRef:
+      type: object
+      required:
+        - id
+        - name
+        - platform
+        - role
+        - roiPercent
+        - netValue
+        - monthlyValue
+        - monthlyCost
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        platform:
+          type: string
+        role:
+          type: string
+        roiPercent:
+          type: number
+        netValue:
+          type: number
+        monthlyValue:
+          type: number
+        monthlyCost:
+          type: number
+
+    BenchmarkAccuracyRef:
+      type: object
+      required:
+        - id
+        - name
+        - platform
+        - role
+        - accuracy
+        - healthScore
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        platform:
+          type: string
+        role:
+          type: string
+        accuracy:
+          type: number
+        healthScore:
+          type: number
+
+    FleetBenchmarks:
+      type: object
+      required:
+        - byRoi
+        - byAccuracy
+        - fleetAvgRoi
+        - fleetAvgAccuracy
+      properties:
+        byRoi:
+          type: array
+          items:
+            $ref: "#/components/schemas/BenchmarkRoiRef"
+        byAccuracy:
+          type: array
+          items:
+            $ref: "#/components/schemas/BenchmarkAccuracyRef"
+        fleetAvgRoi:
+          type: number
+        fleetAvgAccuracy:
+          type: number

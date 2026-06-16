@@ -120,11 +120,11 @@ export default function DashboardPage() {
   const radarData = kpis?.layers.map((l) => ({ layer: l.label, score: l.score })) ?? [];
 
   return (
-    <AppLayout breadcrumbs={[{ label: "Workspace" }, { label: "Frota" }]}>
+    <AppLayout breadcrumbs={[{ label: "Operação" }, { label: "Frota" }]}>
       <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <PageHeading
-          eyebrow="Workspace"
-          title="Comando da Frota"
+          eyebrow="Operação"
+          title="Painel da Frota"
           subtitle="Desempenho consolidado em 5 camadas, retorno sobre investimento e alertas do Detector de Vitória Ilusória."
         />
 

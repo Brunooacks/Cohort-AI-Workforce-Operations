@@ -35,6 +35,14 @@ export const GetFleetSummaryResponse = zod.object({
   "medium": zod.number(),
   "stable": zod.number()
 }),
+  "byStatus": zod.object({
+  "observation": zod.number(),
+  "active": zod.number(),
+  "flagged": zod.number(),
+  "retiring": zod.number(),
+  "retired": zod.number()
+}),
+  "pendingDecisions": zod.number(),
   "byPlatform": zod.array(zod.object({
   "platform": zod.string(),
   "count": zod.number()
@@ -95,6 +103,99 @@ export const GetFleetKpisResponse = zod.object({
   "severity": zod.enum(['critical', 'high', 'medium', 'stable'])
 })),
   "totalEvaluations": zod.number()
+})
+
+
+/**
+ * Pending and decided committee verdicts across the whole fleet, for the command home and audit trail.
+ * @summary Fleet-wide verdict decisions
+ */
+export const ListFleetDecisionsResponseItem = zod.object({
+  "id": zod.string(),
+  "agentId": zod.string(),
+  "agentName": zod.string(),
+  "agentRole": zod.string(),
+  "platform": zod.string(),
+  "verdict": zod.enum(['promote', 'mentor', 'retire', 'observation']),
+  "confidence": zod.number(),
+  "executionWindow": zod.string(),
+  "decision": zod.enum(['pending', 'approved', 'disagreed', 'exported']),
+  "decidedBy": zod.string().nullish(),
+  "decidedAt": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+export const ListFleetDecisionsResponse = zod.array(ListFleetDecisionsResponseItem)
+
+
+/**
+ * Compliance summary, responsibility chain grouped by business owner and audit trail.
+ * @summary Fleet governance overview
+ */
+export const GetFleetGovernanceResponse = zod.object({
+  "summary": zod.object({
+  "totalAgents": zod.number(),
+  "compliantAgents": zod.number(),
+  "avgGovernanceScore": zod.number(),
+  "agentsInReview": zod.number(),
+  "openAlerts": zod.number(),
+  "fullyOwnedAgents": zod.number()
+}),
+  "responsibilityChain": zod.array(zod.object({
+  "businessOwner": zod.string(),
+  "agentCount": zod.number(),
+  "agents": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "role": zod.string(),
+  "status": zod.enum(['observation', 'active', 'flagged', 'retiring', 'retired']),
+  "healthScore": zod.number(),
+  "governanceScore": zod.number(),
+  "technicalOwner": zod.string(),
+  "governanceSponsor": zod.string()
+}))
+})),
+  "auditTrail": zod.array(zod.object({
+  "id": zod.string(),
+  "agentId": zod.string(),
+  "agentName": zod.string(),
+  "agentRole": zod.string(),
+  "platform": zod.string(),
+  "verdict": zod.enum(['promote', 'mentor', 'retire', 'observation']),
+  "confidence": zod.number(),
+  "executionWindow": zod.string(),
+  "decision": zod.enum(['pending', 'approved', 'disagreed', 'exported']),
+  "decidedBy": zod.string().nullish(),
+  "decidedAt": zod.string().nullish(),
+  "createdAt": zod.string()
+}))
+})
+
+
+/**
+ * ROI and accuracy rankings across the whole fleet.
+ * @summary Fleet benchmarks
+ */
+export const GetFleetBenchmarksResponse = zod.object({
+  "byRoi": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "platform": zod.string(),
+  "role": zod.string(),
+  "roiPercent": zod.number(),
+  "netValue": zod.number(),
+  "monthlyValue": zod.number(),
+  "monthlyCost": zod.number()
+})),
+  "byAccuracy": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "platform": zod.string(),
+  "role": zod.string(),
+  "accuracy": zod.number(),
+  "healthScore": zod.number()
+})),
+  "fleetAvgRoi": zod.number(),
+  "fleetAvgAccuracy": zod.number()
 })
 
 

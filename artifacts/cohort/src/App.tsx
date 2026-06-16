@@ -10,12 +10,15 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppShellProvider } from "@/lib/app-shell";
 
 import LandingPage from "@/pages/landing";
+import CommandPage from "@/pages/comando";
 import DashboardPage from "@/pages/dashboard";
 import AgentsPage from "@/pages/agents";
 import AgentDetailPage from "@/pages/agent-detail";
 import AdmissionPage from "@/pages/admission";
 import ConnectorsPage from "@/pages/connectors";
 import AlertsPage from "@/pages/alerts";
+import GovernancePage from "@/pages/governanca";
+import BenchmarksPage from "@/pages/benchmarks";
 import NotFound from "@/pages/not-found";
 
 const clerkPubKey = publishableKeyFromHost(
@@ -105,7 +108,7 @@ function HomeRedirect() {
   return (
     <>
       <Show when="signed-in">
-        <Redirect to="/frota" />
+        <Redirect to="/comando" />
       </Show>
       <Show when="signed-out">
         <LandingPage />
@@ -185,6 +188,9 @@ function ClerkProviderWithRoutes() {
             <Route path="/sign-in/*?" component={SignInPage} />
             <Route path="/sign-up/*?" component={SignUpPage} />
             
+            <Route path="/comando">
+              <ProtectedRoute component={CommandPage} />
+            </Route>
             <Route path="/frota">
               <ProtectedRoute component={DashboardPage} />
             </Route>
@@ -202,6 +208,12 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/alertas">
               <ProtectedRoute component={AlertsPage} />
+            </Route>
+            <Route path="/governanca">
+              <ProtectedRoute component={GovernancePage} />
+            </Route>
+            <Route path="/benchmarks">
+              <ProtectedRoute component={BenchmarksPage} />
             </Route>
             
             <Route component={NotFound} />

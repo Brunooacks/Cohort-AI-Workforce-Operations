@@ -7,6 +7,10 @@ import {
   UserPlus,
   Plug,
   ShieldAlert,
+  Scale,
+  BarChart3,
+  Compass,
+  Sparkles,
   LogOut,
   Menu,
   ChevronRight,
@@ -19,7 +23,9 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useAppShell } from "@/lib/app-shell";
-import { Eyebrow } from "@/components/cohort";
+import { Eyebrow, Pill } from "@/components/cohort";
+import { useGetFleetSummary } from "@workspace/api-client-react";
+import { platformLabel } from "@/lib/platforms";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -32,59 +38,116 @@ type NavGroup = { label: string; items: NavItem[] };
 
 const NAV_GROUPS: NavGroup[] = [
   {
-    label: "Workspace",
+    label: "Operação",
     items: [
-      { name: "Frota", href: "/frota", icon: LayoutGrid },
+      { name: "Comando", href: "/comando", icon: Compass },
       { name: "Agentes", href: "/agentes", icon: Users },
-      { name: "Admissão", href: "/admissao", icon: UserPlus },
+      { name: "Frota", href: "/frota", icon: LayoutGrid },
     ],
   },
   {
     label: "Governança",
-    items: [{ name: "Detector de vitória ilusória", href: "/alertas", icon: ShieldAlert }],
+    items: [
+      { name: "Detector de vitória ilusória", href: "/alertas", icon: ShieldAlert },
+      { name: "Governança", href: "/governanca", icon: Scale },
+      { name: "Benchmarks", href: "/benchmarks", icon: BarChart3 },
+    ],
   },
   {
     label: "Conta",
-    items: [{ name: "Conectores", href: "/conectores", icon: Plug }],
+    items: [
+      { name: "Admissão", href: "/admissao", icon: UserPlus },
+      { name: "Conectores", href: "/conectores", icon: Plug },
+    ],
   },
 ];
 
 function isActiveRoute(location: string, href: string) {
-  if (href === "/frota") return location === "/frota";
   return location === href || location.startsWith(href + "/");
+}
+
+function ConnectorsSection({ onNavigate }: { onNavigate?: () => void }) {
+  const { data: summary } = useGetFleetSummary();
+  const byPlatform = summary?.byPlatform ?? [];
+  if (byPlatform.length === 0) return null;
+  return (
+    <div className="space-y-1.5">
+      <Eyebrow className="px-3">Conectores</Eyebrow>
+      <div className="space-y-0.5">
+        {byPlatform.map((p) => (
+          <Link
+            key={p.platform}
+            href="/conectores"
+            onClick={onNavigate}
+            className="flex items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground"
+          >
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-chart-1" />
+              <span className="truncate">{platformLabel(p.platform)}</span>
+            </span>
+            <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground/70">
+              {p.count}
+            </span>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DetectorV2Card() {
+  return (
+    <div className="rounded-xl border border-card-border bg-card p-3">
+      <div className="mb-2 flex items-center gap-2">
+        <Sparkles className="h-4 w-4 text-chart-2" strokeWidth={1.75} />
+        <span className="text-sm font-medium text-foreground">Detector v2</span>
+        <Pill tone="ochre">Beta</Pill>
+      </div>
+      <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+        12 padrões novos de vitória ilusória, com correlação entre camadas.
+      </p>
+      <Button variant="outline" size="sm" className="w-full" disabled>
+        Ativar
+      </Button>
+    </div>
+  );
 }
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const [location] = useLocation();
   return (
-    <nav className="space-y-6">
-      {NAV_GROUPS.map((group) => (
-        <div key={group.label} className="space-y-1.5">
-          <Eyebrow className="px-3">{group.label}</Eyebrow>
-          <div className="space-y-0.5">
-            {group.items.map((item) => {
-              const active = isActiveRoute(location, item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={onNavigate}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                    active
-                      ? "bg-secondary font-medium text-foreground"
-                      : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
-                  )}
-                >
-                  <item.icon className="h-4 w-4 shrink-0" strokeWidth={active ? 2 : 1.75} />
-                  <span className="truncate">{item.name}</span>
-                </Link>
-              );
-            })}
+    <div className="space-y-6">
+      <nav className="space-y-6">
+        {NAV_GROUPS.map((group) => (
+          <div key={group.label} className="space-y-1.5">
+            <Eyebrow className="px-3">{group.label}</Eyebrow>
+            <div className="space-y-0.5">
+              {group.items.map((item) => {
+                const active = isActiveRoute(location, item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onNavigate}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                      active
+                        ? "bg-secondary font-medium text-foreground"
+                        : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
+                    )}
+                  >
+                    <item.icon className="h-4 w-4 shrink-0" strokeWidth={active ? 2 : 1.75} />
+                    <span className="truncate">{item.name}</span>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ))}
-    </nav>
+        ))}
+      </nav>
+      <ConnectorsSection onNavigate={onNavigate} />
+      <DetectorV2Card />
+    </div>
   );
 }
 

@@ -7,12 +7,15 @@
  */
 import type { PlatformCount } from './platformCount';
 import type { SeverityBreakdown } from './severityBreakdown';
+import type { StatusBreakdown } from './statusBreakdown';
 import type { VerdictBreakdown } from './verdictBreakdown';
 
 export interface FleetSummary {
   totalAgents: number;
   byVerdict: VerdictBreakdown;
   bySeverity: SeverityBreakdown;
+  byStatus: StatusBreakdown;
+  pendingDecisions: number;
   byPlatform: PlatformCount[];
   avgHealthScore: number;
   activeAlerts: number;

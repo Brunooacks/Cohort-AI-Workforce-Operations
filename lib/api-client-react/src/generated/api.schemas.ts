@@ -32,10 +32,20 @@ export interface SeverityBreakdown {
   stable: number;
 }
 
+export interface StatusBreakdown {
+  observation: number;
+  active: number;
+  flagged: number;
+  retiring: number;
+  retired: number;
+}
+
 export interface FleetSummary {
   totalAgents: number;
   byVerdict: VerdictBreakdown;
   bySeverity: SeverityBreakdown;
+  byStatus: StatusBreakdown;
+  pendingDecisions: number;
   byPlatform: PlatformCount[];
   avgHealthScore: number;
   activeAlerts: number;
@@ -542,6 +552,113 @@ export interface DiscoveryResult {
 
 export interface DiscoveryImportInput {
   externalIds: string[];
+}
+
+export type FleetDecisionVerdict = typeof FleetDecisionVerdict[keyof typeof FleetDecisionVerdict];
+
+
+export const FleetDecisionVerdict = {
+  promote: 'promote',
+  mentor: 'mentor',
+  retire: 'retire',
+  observation: 'observation',
+} as const;
+
+export type FleetDecisionDecision = typeof FleetDecisionDecision[keyof typeof FleetDecisionDecision];
+
+
+export const FleetDecisionDecision = {
+  pending: 'pending',
+  approved: 'approved',
+  disagreed: 'disagreed',
+  exported: 'exported',
+} as const;
+
+export interface FleetDecision {
+  id: string;
+  agentId: string;
+  agentName: string;
+  agentRole: string;
+  platform: string;
+  verdict: FleetDecisionVerdict;
+  confidence: number;
+  executionWindow: string;
+  decision: FleetDecisionDecision;
+  /** @nullable */
+  decidedBy?: string | null;
+  /** @nullable */
+  decidedAt?: string | null;
+  createdAt: string;
+}
+
+export interface GovernanceSummary {
+  totalAgents: number;
+  compliantAgents: number;
+  avgGovernanceScore: number;
+  agentsInReview: number;
+  openAlerts: number;
+  fullyOwnedAgents: number;
+}
+
+export type GovernanceAgentRefStatus = typeof GovernanceAgentRefStatus[keyof typeof GovernanceAgentRefStatus];
+
+
+export const GovernanceAgentRefStatus = {
+  observation: 'observation',
+  active: 'active',
+  flagged: 'flagged',
+  retiring: 'retiring',
+  retired: 'retired',
+} as const;
+
+export interface GovernanceAgentRef {
+  id: string;
+  name: string;
+  role: string;
+  status: GovernanceAgentRefStatus;
+  healthScore: number;
+  governanceScore: number;
+  technicalOwner: string;
+  governanceSponsor: string;
+}
+
+export interface OwnerGroup {
+  businessOwner: string;
+  agentCount: number;
+  agents: GovernanceAgentRef[];
+}
+
+export interface FleetGovernance {
+  summary: GovernanceSummary;
+  responsibilityChain: OwnerGroup[];
+  auditTrail: FleetDecision[];
+}
+
+export interface BenchmarkRoiRef {
+  id: string;
+  name: string;
+  platform: string;
+  role: string;
+  roiPercent: number;
+  netValue: number;
+  monthlyValue: number;
+  monthlyCost: number;
+}
+
+export interface BenchmarkAccuracyRef {
+  id: string;
+  name: string;
+  platform: string;
+  role: string;
+  accuracy: number;
+  healthScore: number;
+}
+
+export interface FleetBenchmarks {
+  byRoi: BenchmarkRoiRef[];
+  byAccuracy: BenchmarkAccuracyRef[];
+  fleetAvgRoi: number;
+  fleetAvgAccuracy: number;
 }
 
 export type ListFleetAlertsParams = {

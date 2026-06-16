@@ -3,8 +3,10 @@ import { desc, eq } from "drizzle-orm";
 import {
   db,
   agents,
+  agentOwners,
   alerts,
   evaluations,
+  verdicts,
   metricPoints,
   type KpiLayer,
   type LayerKey,
@@ -15,6 +17,9 @@ import {
   GetFleetKpisResponse,
   ListFleetAlertsQueryParams,
   ListFleetAlertsResponse,
+  ListFleetDecisionsResponse,
+  GetFleetGovernanceResponse,
+  GetFleetBenchmarksResponse,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
 
@@ -51,6 +56,13 @@ router.get("/fleet/summary", requireAuth, async (_req, res) => {
 
   const byVerdict = { promote: 0, mentor: 0, retire: 0, observation: 0 };
   const bySeverity = { critical: 0, high: 0, medium: 0, stable: 0 };
+  const byStatus = {
+    observation: 0,
+    active: 0,
+    flagged: 0,
+    retiring: 0,
+    retired: 0,
+  };
   const platformCounts = new Map<string, number>();
   let healthSum = 0;
   let valueSum = 0;
@@ -59,6 +71,7 @@ router.get("/fleet/summary", requireAuth, async (_req, res) => {
   for (const a of allAgents) {
     byVerdict[a.currentVerdict] += 1;
     bySeverity[a.severity] += 1;
+    byStatus[a.status] += 1;
     platformCounts.set(a.platform, (platformCounts.get(a.platform) ?? 0) + 1);
     healthSum += a.healthScore;
     valueSum += a.monthlyValue;
@@ -67,10 +80,17 @@ router.get("/fleet/summary", requireAuth, async (_req, res) => {
 
   const activeAlerts = allAlerts.filter((a) => a.status === "active").length;
 
+  const pendingVerdicts = await db
+    .select({ agentId: verdicts.agentId })
+    .from(verdicts)
+    .where(eq(verdicts.decision, "pending"));
+  const pendingDecisions = new Set(pendingVerdicts.map((v) => v.agentId)).size;
+
   const data = GetFleetSummaryResponse.parse({
     totalAgents: allAgents.length,
     byVerdict,
     bySeverity,
+    byStatus,
     byPlatform: [...platformCounts.entries()].map(([platform, count]) => ({
       platform,
       count,
@@ -79,6 +99,7 @@ router.get("/fleet/summary", requireAuth, async (_req, res) => {
       ? Math.round(healthSum / allAgents.length)
       : 0,
     activeAlerts,
+    pendingDecisions,
     estimatedMonthlyValue: valueSum,
     estimatedMonthlyCost: costSum,
     connectedPlatforms: platformCounts.size,
@@ -244,6 +265,223 @@ router.get("/fleet/alerts", requireAuth, async (req, res) => {
       detectedAt: r.detectedAt.toISOString(),
     })),
   );
+
+  res.json(data);
+});
+
+router.get("/fleet/decisions", requireAuth, async (_req, res) => {
+  const rows = await db
+    .select({
+      id: verdicts.id,
+      agentId: verdicts.agentId,
+      agentName: agents.name,
+      agentRole: agents.role,
+      platform: agents.platform,
+      verdict: verdicts.verdict,
+      confidence: verdicts.confidence,
+      executionWindow: verdicts.executionWindow,
+      decision: verdicts.decision,
+      decidedBy: verdicts.decidedBy,
+      decidedAt: verdicts.decidedAt,
+      createdAt: verdicts.createdAt,
+    })
+    .from(verdicts)
+    .innerJoin(agents, eq(verdicts.agentId, agents.id))
+    .orderBy(desc(verdicts.createdAt));
+
+  const data = ListFleetDecisionsResponse.parse(
+    rows.map((r) => ({
+      ...r,
+      decidedBy: r.decidedBy ?? null,
+      decidedAt: r.decidedAt ? r.decidedAt.toISOString() : null,
+      createdAt: r.createdAt.toISOString(),
+    })),
+  );
+
+  res.json(data);
+});
+
+router.get("/fleet/governance", requireAuth, async (_req, res) => {
+  const allAgents = await db.select().from(agents);
+  const allOwners = await db.select().from(agentOwners);
+  const allEvaluations = await db
+    .select()
+    .from(evaluations)
+    .orderBy(desc(evaluations.evaluatedAt));
+
+  const ownersByAgent = new Map(allOwners.map((o) => [o.agentId, o]));
+
+  const latestByAgent = new Map<string, typeof allEvaluations[number]>();
+  for (const e of allEvaluations) {
+    if (!latestByAgent.has(e.agentId)) latestByAgent.set(e.agentId, e);
+  }
+
+  const governanceScore = (agentId: string): number => {
+    const e = latestByAgent.get(agentId);
+    if (!e) return 0;
+    const layer = (e.layers as KpiLayer[]).find((l) => l.key === "governance");
+    return layer ? layer.score : 0;
+  };
+
+  let governanceSum = 0;
+  let compliantAgents = 0;
+  let agentsInReview = 0;
+  let fullyOwnedAgents = 0;
+
+  for (const a of allAgents) {
+    const score = governanceScore(a.id);
+    governanceSum += score;
+    if (score >= 70) compliantAgents += 1;
+    if (a.status === "observation" || a.status === "retiring") {
+      agentsInReview += 1;
+    }
+    const o = ownersByAgent.get(a.id);
+    if (o && o.businessOwner && o.technicalOwner && o.governanceSponsor) {
+      fullyOwnedAgents += 1;
+    }
+  }
+
+  const allAlerts = await db.select().from(alerts);
+  const openAlerts = allAlerts.filter((a) => a.status === "active").length;
+
+  const groups = new Map<string, ReturnType<typeof buildGovRef>[]>();
+  function buildGovRef(a: typeof allAgents[number]) {
+    const o = ownersByAgent.get(a.id);
+    return {
+      id: a.id,
+      name: a.name,
+      role: a.role,
+      status: a.status,
+      healthScore: a.healthScore,
+      governanceScore: governanceScore(a.id),
+      technicalOwner: o?.technicalOwner || "—",
+      governanceSponsor: o?.governanceSponsor || "—",
+    };
+  }
+  for (const a of allAgents) {
+    const o = ownersByAgent.get(a.id);
+    const owner = o?.businessOwner || "Sem dono de negócio";
+    const list = groups.get(owner) ?? [];
+    list.push(buildGovRef(a));
+    groups.set(owner, list);
+  }
+
+  const responsibilityChain = [...groups.entries()]
+    .map(([businessOwner, agentsList]) => ({
+      businessOwner,
+      agentCount: agentsList.length,
+      agents: agentsList.sort((x, y) => y.healthScore - x.healthScore),
+    }))
+    .sort((a, b) => b.agentCount - a.agentCount);
+
+  const decided = await db
+    .select({
+      id: verdicts.id,
+      agentId: verdicts.agentId,
+      agentName: agents.name,
+      agentRole: agents.role,
+      platform: agents.platform,
+      verdict: verdicts.verdict,
+      confidence: verdicts.confidence,
+      executionWindow: verdicts.executionWindow,
+      decision: verdicts.decision,
+      decidedBy: verdicts.decidedBy,
+      decidedAt: verdicts.decidedAt,
+      createdAt: verdicts.createdAt,
+    })
+    .from(verdicts)
+    .innerJoin(agents, eq(verdicts.agentId, agents.id))
+    .orderBy(desc(verdicts.createdAt));
+
+  const auditTrail = decided
+    .filter((r) => r.decision !== "pending")
+    .slice(0, 12)
+    .map((r) => ({
+      ...r,
+      decidedBy: r.decidedBy ?? null,
+      decidedAt: r.decidedAt ? r.decidedAt.toISOString() : null,
+      createdAt: r.createdAt.toISOString(),
+    }));
+
+  const data = GetFleetGovernanceResponse.parse({
+    summary: {
+      totalAgents: allAgents.length,
+      compliantAgents,
+      avgGovernanceScore: allAgents.length
+        ? round1(governanceSum / allAgents.length)
+        : 0,
+      agentsInReview,
+      openAlerts,
+      fullyOwnedAgents,
+    },
+    responsibilityChain,
+    auditTrail,
+  });
+
+  res.json(data);
+});
+
+router.get("/fleet/benchmarks", requireAuth, async (_req, res) => {
+  const allAgents = await db.select().from(agents);
+  const allEvaluations = await db
+    .select()
+    .from(evaluations)
+    .orderBy(desc(evaluations.evaluatedAt));
+
+  const latestByAgent = new Map<string, typeof allEvaluations[number]>();
+  for (const e of allEvaluations) {
+    if (!latestByAgent.has(e.agentId)) latestByAgent.set(e.agentId, e);
+  }
+
+  const accuracyOf = (agentId: string): number => {
+    const e = latestByAgent.get(agentId);
+    if (!e) return 0;
+    const layer = (e.layers as KpiLayer[]).find((l) => l.key === "efficacy");
+    return layer ? layer.score : 0;
+  };
+
+  const byRoi = [...allAgents]
+    .map((a) => {
+      const netValue = a.monthlyValue - a.monthlyCost;
+      const roiPercent =
+        a.monthlyCost > 0 ? round1((netValue / a.monthlyCost) * 100) : 0;
+      return {
+        id: a.id,
+        name: a.name,
+        platform: a.platform,
+        role: a.role,
+        roiPercent,
+        netValue,
+        monthlyValue: a.monthlyValue,
+        monthlyCost: a.monthlyCost,
+      };
+    })
+    .sort((a, b) => b.roiPercent - a.roiPercent);
+
+  const byAccuracy = [...allAgents]
+    .map((a) => ({
+      id: a.id,
+      name: a.name,
+      platform: a.platform,
+      role: a.role,
+      accuracy: accuracyOf(a.id),
+      healthScore: a.healthScore,
+    }))
+    .sort((a, b) => b.accuracy - a.accuracy);
+
+  const fleetAvgRoi = byRoi.length
+    ? round1(byRoi.reduce((s, a) => s + a.roiPercent, 0) / byRoi.length)
+    : 0;
+  const fleetAvgAccuracy = byAccuracy.length
+    ? round1(byAccuracy.reduce((s, a) => s + a.accuracy, 0) / byAccuracy.length)
+    : 0;
+
+  const data = GetFleetBenchmarksResponse.parse({
+    byRoi,
+    byAccuracy,
+    fleetAvgRoi,
+    fleetAvgAccuracy,
+  });
 
   res.json(data);
 });
