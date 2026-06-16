@@ -48,11 +48,11 @@ Cohort é uma plataforma plug-and-play que dá às frotas de agentes de IA (mult
 - **Veredito** — Promover / Mentorar / Aposentar, com confiança, janela de execução e plano de ação.
 - **Detector de Vitória Ilusória** — sinaliza padrões enganosos de sucesso.
 - **Comitê / Governança da Frota** — donos de negócio/técnico/sponsor por agente.
-- UI inteiramente em português do Brasil. Design "Neutro Notion": fundo papel quente, monocromático + leve acento sage.
+- UI inteiramente em português do Brasil. Design "Trincheira": papel creme quente, verde-floresta, tipografia serifada editorial (Spectral) + mono (IBM Plex Mono).
 
 ## User preferences
 
-- **Design (app autenticado):** "Neutro Notion" (fundo papel quente, monocromático + acento sage suave). O usuário **rejeitou** o dark-amber específico de antes.
+- **Design (app autenticado):** "Trincheira — AI Workforce Operations" (réplica fiel das 13 telas de referência). Fundo creme quente `42 30% 93%`, primária verde-floresta `158 27% 19%`; títulos e números grandes em **serif Spectral**, dados tabulares em **mono IBM Plex Mono**; eyebrows uppercase tracked; pills de status (sage/ocre/terracota/vermelho/azul). Supersede o "Neutro Notion"/sage anterior (que por sua vez superou o dark-amber rejeitado).
 - **Design (landing pública):** bold/cinematográfico DARK inspirado no Veltrix (veltrix.framer.ai) — fundo near-black, aurora animada, headline Inter 800/900 + palavra em Instrument Serif itálico, acento coral `#e8744a`. Mantido **self-contained** na landing; o app autenticado segue claro. Ver `.agents/memory/landing-vs-app-theme.md`.
 - **Idioma da UI:** português do Brasil.
 - **Vocabulário do produto:** Frota, Carteira de Trabalho, Veredito, Admissão, Comitê, Detector de Vitória Ilusória.

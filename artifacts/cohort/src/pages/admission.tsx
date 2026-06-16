@@ -3,14 +3,15 @@ import { useCreateAgent } from "@workspace/api-client-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { PageHeading, Eyebrow } from "@/components/cohort";
 
 const formSchema = z.object({
   name: z.string().min(2, "Nome é obrigatório"),
@@ -63,21 +64,20 @@ export default function AdmissionPage() {
   }
 
   return (
-    <AppLayout title="Admissão">
-      <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in duration-500">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Admissão de Agente</h2>
-          <p className="text-muted-foreground text-sm mt-1">
-            Gere a Carteira de Trabalho para um novo agente ingressar na frota.
-          </p>
-        </div>
+    <AppLayout breadcrumbs={[{ label: "Workspace" }, { label: "Admissão" }]}>
+      <div className="mx-auto max-w-2xl space-y-7 animate-in fade-in duration-500">
+        <PageHeading
+          eyebrow="Workspace"
+          title="Cadastrar agente"
+          subtitle="Gere a Carteira de Trabalho para um novo agente ingressar na frota."
+        />
 
         <Card>
-          <CardHeader>
-            <CardTitle>Identidade Básica</CardTitle>
-            <CardDescription>Informações principais do agente</CardDescription>
-          </CardHeader>
-          <CardContent>
+          <div className="border-b border-card-border px-6 py-4">
+            <Eyebrow>Identidade básica</Eyebrow>
+            <p className="mt-0.5 text-sm text-muted-foreground">Informações principais do agente</p>
+          </div>
+          <CardContent className="pt-6">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">

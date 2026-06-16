@@ -1,23 +1,25 @@
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useClerk, useUser } from "@clerk/react";
-import { 
-  LayoutDashboard, 
-  Users, 
-  UserPlus, 
-  Link as LinkIcon, 
-  BellRing,
+import {
+  LayoutGrid,
+  Users,
+  UserPlus,
+  Plug,
+  ShieldAlert,
   LogOut,
   Menu,
-  ChevronRight
+  ChevronRight,
+  Search,
+  Bell,
+  HelpCircle,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { 
-  Sheet, 
-  SheetContent, 
-  SheetTrigger 
-} from "@/components/ui/sheet";
-import { Separator } from "@/components/ui/separator";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
+import { useAppShell } from "@/lib/app-shell";
+import { Eyebrow } from "@/components/cohort";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -25,85 +27,186 @@ interface LayoutProps {
   breadcrumbs?: { label: string; href?: string }[];
 }
 
-export function AppLayout({ children, title, breadcrumbs }: LayoutProps) {
+type NavItem = { name: string; href: string; icon: typeof Users };
+type NavGroup = { label: string; items: NavItem[] };
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    label: "Workspace",
+    items: [
+      { name: "Frota", href: "/frota", icon: LayoutGrid },
+      { name: "Agentes", href: "/agentes", icon: Users },
+      { name: "Admissão", href: "/admissao", icon: UserPlus },
+    ],
+  },
+  {
+    label: "Governança",
+    items: [{ name: "Detector de vitória ilusória", href: "/alertas", icon: ShieldAlert }],
+  },
+  {
+    label: "Conta",
+    items: [{ name: "Conectores", href: "/conectores", icon: Plug }],
+  },
+];
+
+function isActiveRoute(location: string, href: string) {
+  if (href === "/frota") return location === "/frota";
+  return location === href || location.startsWith(href + "/");
+}
+
+function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const [location] = useLocation();
-  const { signOut } = useClerk();
-  const { user } = useUser();
-  const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+  return (
+    <nav className="space-y-6">
+      {NAV_GROUPS.map((group) => (
+        <div key={group.label} className="space-y-1.5">
+          <Eyebrow className="px-3">{group.label}</Eyebrow>
+          <div className="space-y-0.5">
+            {group.items.map((item) => {
+              const active = isActiveRoute(location, item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onNavigate}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                    active
+                      ? "bg-secondary font-medium text-foreground"
+                      : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
+                  )}
+                >
+                  <item.icon className="h-4 w-4 shrink-0" strokeWidth={active ? 2 : 1.75} />
+                  <span className="truncate">{item.name}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </nav>
+  );
+}
 
-  const navigation = [
-    { name: "Frota", href: "/frota", icon: LayoutDashboard },
-    { name: "Agentes", href: "/agentes", icon: Users },
-    { name: "Admissão", href: "/admissao", icon: UserPlus },
-    { name: "Conectores", href: "/conectores", icon: LinkIcon },
-    { name: "Alertas", href: "/alertas", icon: BellRing },
-  ];
-
-  const handleSignOut = () => {
-    signOut({ redirectUrl: basePath || "/" });
-  };
-
-  const NavLinks = () => (
-    <div className="space-y-1">
-      {navigation.map((item) => {
-        const isActive = location === item.href || (item.href !== "/frota" && location.startsWith(item.href));
-        return (
-          <Link 
-            key={item.name} 
-            href={item.href}
-            className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-              isActive 
-                ? "bg-primary text-primary-foreground" 
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            }`}
-          >
-            <item.icon className="h-4 w-4" />
-            {item.name}
-          </Link>
-        );
-      })}
+function Wordmark() {
+  return (
+    <div className="flex flex-col">
+      <span className="font-serif text-2xl font-medium leading-none tracking-tight text-foreground">
+        Cohort
+      </span>
+      <span className="mt-1 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+        Governança de frotas de IA
+      </span>
     </div>
   );
+}
+
+function UserCard({ onSignOut }: { onSignOut: () => void }) {
+  const { user } = useUser();
+  return (
+    <div className="rounded-xl border border-card-border bg-card p-3">
+      <div className="mb-3 flex items-center gap-3">
+        <Avatar className="h-9 w-9 border border-border">
+          <AvatarImage src={user?.imageUrl} />
+          <AvatarFallback className="text-xs">{user?.firstName?.charAt(0) || "U"}</AvatarFallback>
+        </Avatar>
+        <div className="flex min-w-0 flex-col">
+          <span className="truncate text-sm font-medium">{user?.fullName || "Usuário"}</span>
+          <span className="truncate text-xs text-muted-foreground">
+            {user?.primaryEmailAddress?.emailAddress}
+          </span>
+        </div>
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="w-full justify-start text-muted-foreground"
+        onClick={onSignOut}
+      >
+        <LogOut className="mr-2 h-4 w-4" />
+        Sair
+      </Button>
+    </div>
+  );
+}
+
+function PerspectiveToggle() {
+  const { perspective, setPerspective } = useAppShell();
+  const options: { value: "gestor" | "platform"; label: string }[] = [
+    { value: "gestor", label: "Gestor" },
+    { value: "platform", label: "Platform" },
+  ];
+  return (
+    <div className="hidden items-center rounded-full border border-border bg-card p-0.5 sm:flex">
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => setPerspective(opt.value)}
+          className={cn(
+            "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+            perspective === opt.value
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function GlobalSearch() {
+  const { search, setSearch } = useAppShell();
+  const [, setLocation] = useLocation();
+  const [value, setValue] = useState(search);
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        setSearch(value);
+        setLocation("/agentes");
+      }}
+      className="relative hidden max-w-xs flex-1 lg:block"
+    >
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="Buscar agente, papel, plataforma…"
+        className="h-9 w-full rounded-lg border border-border bg-card pl-9 pr-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-foreground/30"
+        aria-label="Buscar"
+      />
+    </form>
+  );
+}
+
+export function AppLayout({ children, title, breadcrumbs }: LayoutProps) {
+  const { signOut } = useClerk();
+  const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const handleSignOut = () => signOut({ redirectUrl: basePath || "/" });
 
   return (
-    <div className="min-h-screen bg-background flex w-full">
-      {/* Sidebar - Desktop */}
-      <aside className="hidden md:flex w-64 flex-col border-r bg-card h-screen sticky top-0">
-        <div className="p-6 flex items-center gap-3">
-          <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center text-primary-foreground font-bold">
-            C
-          </div>
-          <span className="font-semibold tracking-tight text-lg">Cohort</span>
+    <div className="flex min-h-screen w-full bg-background">
+      {/* Sidebar — Desktop */}
+      <aside className="sticky top-0 hidden h-screen w-64 flex-col border-r border-sidebar-border bg-sidebar md:flex">
+        <div className="px-6 py-6">
+          <Wordmark />
         </div>
-        
-        <div className="px-3 flex-1">
-          <NavLinks />
+        <div className="flex-1 overflow-y-auto px-3 py-2">
+          <SidebarNav />
         </div>
-        
-        <div className="p-4 border-t">
-          <div className="flex items-center gap-3 mb-4 px-2">
-            <Avatar className="h-9 w-9 border border-border">
-              <AvatarImage src={user?.imageUrl} />
-              <AvatarFallback>{user?.firstName?.charAt(0) || "U"}</AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col overflow-hidden">
-              <span className="text-sm font-medium truncate">{user?.fullName || "Usuário"}</span>
-              <span className="text-xs text-muted-foreground truncate">{user?.primaryEmailAddress?.emailAddress}</span>
-            </div>
-          </div>
-          <Button variant="ghost" className="w-full justify-start text-muted-foreground" onClick={handleSignOut}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Sair
-          </Button>
+        <div className="p-3">
+          <UserCard onSignOut={handleSignOut} />
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0">
-        {/* Header - Mobile & Desktop Breadcrumbs */}
-        <header className="h-16 border-b bg-card flex items-center justify-between px-4 sm:px-6 sticky top-0 z-10">
-          <div className="flex items-center gap-2 sm:gap-4">
-            {/* Mobile Menu Trigger */}
+      {/* Main */}
+      <main className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-3 border-b border-border bg-background/85 px-4 backdrop-blur sm:px-6">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-4">
+            {/* Mobile menu */}
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="md:hidden">
@@ -111,50 +214,53 @@ export function AppLayout({ children, title, breadcrumbs }: LayoutProps) {
                   <span className="sr-only">Menu</span>
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-64 p-0">
-                <div className="p-6 flex items-center gap-3 border-b">
-                  <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center text-primary-foreground font-bold">
-                    C
-                  </div>
-                  <span className="font-semibold tracking-tight text-lg">Cohort</span>
+              <SheetContent side="left" className="flex w-64 flex-col p-0">
+                <div className="border-b border-sidebar-border px-6 py-6">
+                  <Wordmark />
+                </div>
+                <div className="flex-1 overflow-y-auto px-3 py-4">
+                  <SidebarNav />
                 </div>
                 <div className="p-3">
-                  <NavLinks />
-                </div>
-                <div className="absolute bottom-0 w-full p-4 border-t bg-card">
-                  <Button variant="ghost" className="w-full justify-start text-muted-foreground" onClick={handleSignOut}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Sair
-                  </Button>
+                  <UserCard onSignOut={handleSignOut} />
                 </div>
               </SheetContent>
             </Sheet>
 
-            {/* Breadcrumbs */}
+            {/* Breadcrumb / title */}
             {breadcrumbs ? (
-              <div className="flex items-center text-sm text-muted-foreground">
+              <div className="flex min-w-0 items-center text-sm text-muted-foreground">
                 {breadcrumbs.map((crumb, index) => (
-                  <div key={crumb.label} className="flex items-center">
-                    {index > 0 && <ChevronRight className="h-4 w-4 mx-1" />}
+                  <div key={crumb.label} className="flex min-w-0 items-center">
+                    {index > 0 && <ChevronRight className="mx-1 h-4 w-4 shrink-0" />}
                     {crumb.href ? (
-                      <Link href={crumb.href} className="hover:text-foreground transition-colors">
+                      <Link href={crumb.href} className="truncate transition-colors hover:text-foreground">
                         {crumb.label}
                       </Link>
                     ) : (
-                      <span className="text-foreground font-medium">{crumb.label}</span>
+                      <span className="truncate font-medium text-foreground">{crumb.label}</span>
                     )}
                   </div>
                 ))}
               </div>
             ) : (
-              <h1 className="text-lg font-semibold">{title}</h1>
+              <h1 className="truncate text-sm font-medium text-foreground">{title}</h1>
             )}
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <GlobalSearch />
+            <PerspectiveToggle />
+            <Button variant="ghost" size="icon" className="text-muted-foreground" aria-label="Notificações">
+              <Bell className="h-[18px] w-[18px]" strokeWidth={1.75} />
+            </Button>
+            <Button variant="ghost" size="icon" className="text-muted-foreground" aria-label="Ajuda">
+              <HelpCircle className="h-[18px] w-[18px]" strokeWidth={1.75} />
+            </Button>
           </div>
         </header>
 
-        <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">
-          {children}
-        </div>
+        <div className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">{children}</div>
       </main>
     </div>
   );

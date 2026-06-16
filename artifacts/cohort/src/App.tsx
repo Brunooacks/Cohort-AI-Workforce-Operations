@@ -7,6 +7,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AppShellProvider } from "@/lib/app-shell";
 
 import LandingPage from "@/pages/landing";
 import DashboardPage from "@/pages/dashboard";
@@ -44,7 +45,7 @@ const clerkAppearance = {
     logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
   },
   variables: {
-    colorPrimary: "hsl(160 20% 40%)",
+    colorPrimary: "hsl(158 27% 19%)",
     colorForeground: "hsl(30 15% 15%)",
     colorMutedForeground: "hsl(30 10% 45%)",
     colorDanger: "hsl(0 70% 50%)",
@@ -64,21 +65,21 @@ const clerkAppearance = {
     headerSubtitle: "text-sm text-[hsl(30_10%_45%)]",
     socialButtonsBlockButtonText: "text-[hsl(30_15%_15%)] font-medium",
     formFieldLabel: "text-sm font-medium text-[hsl(30_15%_15%)]",
-    footerActionLink: "text-[hsl(160_20%_40%)] hover:text-[hsl(160_25%_35%)] font-medium",
+    footerActionLink: "text-[hsl(158_27%_19%)] hover:text-[hsl(158_30%_14%)] font-medium",
     footerActionText: "text-[hsl(30_10%_45%)]",
     dividerText: "text-[hsl(30_10%_45%)] text-xs font-medium uppercase tracking-wider",
-    identityPreviewEditButton: "text-[hsl(160_20%_40%)] hover:bg-[hsl(40_15%_94%)]",
-    formFieldSuccessText: "text-[hsl(160_20%_40%)] text-sm",
+    identityPreviewEditButton: "text-[hsl(158_27%_19%)] hover:bg-[hsl(40_15%_94%)]",
+    formFieldSuccessText: "text-[hsl(158_27%_19%)] text-sm",
     alertText: "text-[hsl(0_70%_50%)] text-sm",
     logoBox: "h-8 flex items-center justify-center mb-6",
     logoImage: "h-full w-auto",
     socialButtonsBlockButton: "border border-[hsl(40_10%_90%)] hover:bg-[hsl(40_15%_95%)] transition-colors",
-    formButtonPrimary: "bg-[hsl(160_20%_40%)] hover:bg-[hsl(160_25%_35%)] text-white shadow-sm transition-colors",
-    formFieldInput: "border border-[hsl(40_10%_90%)] rounded-md focus:ring-2 focus:ring-[hsl(160_20%_40%)] focus:border-transparent transition-shadow placeholder:text-[hsl(30_10%_45%)]",
+    formButtonPrimary: "bg-[hsl(158_27%_19%)] hover:bg-[hsl(158_30%_14%)] text-white shadow-sm transition-colors",
+    formFieldInput: "border border-[hsl(40_10%_90%)] rounded-md focus:ring-2 focus:ring-[hsl(158_27%_19%)] focus:border-transparent transition-shadow placeholder:text-[hsl(30_10%_45%)]",
     footerAction: "mt-6",
     dividerLine: "bg-[hsl(40_10%_90%)]",
     alert: "bg-[hsl(0_70%_95%)] border border-[hsl(0_70%_80%)] rounded-md p-3",
-    otpCodeFieldInput: "border border-[hsl(40_10%_90%)] focus:ring-2 focus:ring-[hsl(160_20%_40%)]",
+    otpCodeFieldInput: "border border-[hsl(40_10%_90%)] focus:ring-2 focus:ring-[hsl(158_27%_19%)]",
     formFieldRow: "mb-4",
     main: "flex flex-col gap-4",
   },
@@ -178,6 +179,7 @@ function ClerkProviderWithRoutes() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <ClerkQueryClientCacheInvalidator />
+          <AppShellProvider>
           <Switch>
             <Route path="/" component={HomeRedirect} />
             <Route path="/sign-in/*?" component={SignInPage} />
@@ -204,6 +206,7 @@ function ClerkProviderWithRoutes() {
             
             <Route component={NotFound} />
           </Switch>
+          </AppShellProvider>
           <Toaster />
         </TooltipProvider>
       </QueryClientProvider>

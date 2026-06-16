@@ -1,3 +1,4 @@
-- [Landing dark vs app light](landing-vs-app-theme.md) — landing is bold cinematic dark (Veltrix-inspired), authenticated app stays light "Neutro Notion"; keep landing dark self-contained, never toggle global .dark.
+- [Landing dark vs app light](landing-vs-app-theme.md) — landing is bold cinematic dark (Veltrix-inspired), authenticated app stays light "Trincheira" (warm-cream/forest/serif); keep landing dark self-contained, never toggle global .dark.
+- [Cohort severity enums](cohort-severity-enums.md) — alert severity and evaluation severity are DIFFERENT enums (antecedent vs stable); SeverityBadge map + filters must cover both.
 - [Orval codegen](orval-codegen.md) — stop dev workflows before running Orval codegen or it hangs watching files.
 - [Read-page robustness](read-page-robustness.md) — every read page: isError+refetch via shared ErrorState, filtered-empty vs truly-empty, guarded charAt/index lookups; child query components own their loading/error.

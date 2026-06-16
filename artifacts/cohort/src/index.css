@@ -78,57 +78,57 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .06);
 
-  /* Warm paper background */
-  --background: 40 25% 97%; /* #fcfbf9 */
-  --foreground: 30 15% 15%; /* #2a2725 */
-  
-  --border: 40 10% 90%;
-  --input: 40 10% 90%;
-  --ring: 160 20% 40%; /* Sage green accent */
+  /* Warm paper background — Trincheira editorial */
+  --background: 42 30% 93%; /* warm cream #f1ede3 */
+  --foreground: 30 12% 15%; /* #2a2622 */
 
-  --card: 0 0% 100%;
-  --card-foreground: 30 15% 15%;
-  --card-border: 40 10% 92%;
+  --border: 38 16% 85%;
+  --input: 38 16% 85%;
+  --ring: 158 26% 22%; /* forest green */
 
-  --popover: 0 0% 100%;
-  --popover-foreground: 30 15% 15%;
-  --popover-border: 40 10% 90%;
+  --card: 40 33% 97%; /* #faf8f3 */
+  --card-foreground: 30 12% 15%;
+  --card-border: 38 16% 87%;
 
-  /* Gentle accent color: Sage Green */
-  --primary: 160 20% 40%; 
-  --primary-foreground: 0 0% 100%;
+  --popover: 40 33% 98%;
+  --popover-foreground: 30 12% 15%;
+  --popover-border: 38 16% 85%;
 
-  --secondary: 40 15% 94%;
-  --secondary-foreground: 30 10% 30%;
+  /* Primary: deep forest green */
+  --primary: 158 27% 19%;
+  --primary-foreground: 42 30% 95%;
 
-  --muted: 40 15% 95%;
-  --muted-foreground: 30 10% 45%;
+  --secondary: 40 22% 89%;
+  --secondary-foreground: 30 12% 24%;
 
-  --accent: 40 15% 94%;
-  --accent-foreground: 30 15% 15%;
+  --muted: 40 20% 90%;
+  --muted-foreground: 35 8% 42%;
 
-  --destructive: 0 70% 50%;
-  --destructive-foreground: 0 0% 100%;
+  --accent: 40 22% 89%;
+  --accent-foreground: 30 12% 18%;
 
-  /* Status Colors */
-  --chart-1: 160 25% 45%; /* Stable/Promote */
-  --chart-2: 40 80% 55%;  /* Medium/Mentor */
-  --chart-3: 15 70% 55%;  /* High/Retire */
-  --chart-4: 0 70% 50%;   /* Critical */
-  --chart-5: 220 30% 50%; /* Observation */
+  --destructive: 8 52% 47%;
+  --destructive-foreground: 42 30% 96%;
 
-  --sidebar: 40 25% 97%;
-  --sidebar-foreground: 30 15% 15%;
-  --sidebar-border: 40 10% 90%;
-  --sidebar-primary: 160 20% 40%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 40 15% 92%;
-  --sidebar-accent-foreground: 30 15% 15%;
-  --sidebar-ring: 160 20% 40%;
+  /* Status palette — sage / ochre / terracotta / red / blue */
+  --chart-1: 108 18% 38%; /* sage — ativo / promover */
+  --chart-2: 36 52% 46%;  /* ochre — probation / mentorar */
+  --chart-3: 14 52% 48%;  /* terracotta — em alerta / aposentar */
+  --chart-4: 6 58% 45%;   /* deep red — crítico */
+  --chart-5: 208 22% 46%; /* muted blue — observação */
+
+  --sidebar: 41 28% 94%;
+  --sidebar-foreground: 30 12% 15%;
+  --sidebar-border: 38 16% 86%;
+  --sidebar-primary: 158 27% 19%;
+  --sidebar-primary-foreground: 42 30% 95%;
+  --sidebar-accent: 40 22% 88%;
+  --sidebar-accent-foreground: 30 12% 16%;
+  --sidebar-ring: 158 26% 22%;
 
   --app-font-sans: 'Inter', system-ui, sans-serif;
-  --app-font-serif: Georgia, serif;
-  --app-font-mono: 'Menlo', 'Monaco', 'Courier New', monospace;
+  --app-font-serif: 'Spectral', Georgia, serif;
+  --app-font-mono: 'IBM Plex Mono', 'Menlo', 'Monaco', monospace;
   --radius: 0.5rem; 
 
   --shadow-2xs: 0 1px 2px rgba(0, 0, 0, 0.02);

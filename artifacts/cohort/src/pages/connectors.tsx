@@ -1,19 +1,24 @@
 import { AppLayout } from "@/components/layout";
-import { useListConnectors, useConnectPlatform, useDiscoverAgents, useImportDiscoveredAgents } from "@workspace/api-client-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import {
+  useListConnectors,
+  useConnectPlatform,
+  useDiscoverAgents,
+  useImportDiscoveredAgents,
+} from "@workspace/api-client-react";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Link2, Search, Check, Download, AlertCircle } from "lucide-react";
+import { Link2, Search, Check, Download, Plug } from "lucide-react";
 import { ErrorState } from "@/components/query-state";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { getListConnectorsQueryKey } from "@workspace/api-client-react";
+import { PageHeading, Pill, Eyebrow } from "@/components/cohort";
 
 export default function ConnectorsPage() {
   const { data: connectors, isLoading, isError, refetch } = useListConnectors();
   const { toast } = useToast();
-  
+
   const connectPlatform = useConnectPlatform();
   const discoverAgents = useDiscoverAgents();
   const importAgents = useImportDiscoveredAgents();
@@ -28,8 +33,8 @@ export default function ConnectorsPage() {
         onSuccess: () => {
           toast({ title: "Conector vinculado", description: `Conexão com ${platform} estabelecida.` });
           queryClient.invalidateQueries({ queryKey: getListConnectorsQueryKey() });
-        }
-      }
+        },
+      },
     );
   };
 
@@ -46,8 +51,8 @@ export default function ConnectorsPage() {
         onError: () => {
           setDiscoveringId(null);
           toast({ title: "Erro", description: "Falha ao realizar discovery.", variant: "destructive" });
-        }
-      }
+        },
+      },
     );
   };
 
@@ -60,128 +65,149 @@ export default function ConnectorsPage() {
           toast({ title: "Importação concluída", description: "Agentes admitidos na frota." });
           setDiscoveryResult(null);
           queryClient.invalidateQueries({ queryKey: getListConnectorsQueryKey() });
-        }
-      }
+        },
+      },
     );
   };
 
   return (
-    <AppLayout title="Conectores">
-      <div className="space-y-6 animate-in fade-in duration-500 max-w-5xl">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Plug-and-Play Discovery</h2>
-          <p className="text-muted-foreground text-sm mt-1">
-            Conecte plataformas para descobrir agentes e importar suas métricas propostas automaticamente.
-          </p>
-        </div>
+    <AppLayout breadcrumbs={[{ label: "Conta" }, { label: "Conectores" }]}>
+      <div className="max-w-4xl space-y-7 animate-in fade-in duration-500">
+        <PageHeading
+          eyebrow="Conta · Integrações"
+          title="Conectores"
+          subtitle="Conecte plataformas para descobrir agentes e importar suas métricas propostas automaticamente."
+        />
 
         {discoveryResult && (
-          <Card className="border-primary/20 bg-primary/5 shadow-md">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Check className="h-5 w-5 text-primary" />
-                Discovery Result: {discoveryResult.platform}
-              </CardTitle>
-              <CardDescription>{discoveryResult.coverageNote}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4">
-                {discoveryResult.agents.map((agent: any) => (
-                  <div key={agent.externalId} className="p-4 bg-card border rounded-lg flex items-center justify-between">
-                    <div>
-                      <div className="font-medium">{agent.name} <Badge variant="outline" className="ml-2">{agent.role}</Badge></div>
-                      <div className="text-xs text-muted-foreground mt-1 flex gap-2">
-                        <span>{agent.proposedMetrics.length} métricas mapeadas</span>
-                        <span>• Confiança: {agent.confidence}%</span>
-                      </div>
-                    </div>
-                    {agent.alreadyImported ? (
-                      <Badge variant="secondary">Já na Frota</Badge>
-                    ) : (
-                      <Button size="sm" onClick={() => handleImport([agent.externalId])}>
-                        <Download className="h-4 w-4 mr-1" />
-                        Importar & Admitir
-                      </Button>
-                    )}
-                  </div>
-                ))}
+          <Card className="overflow-hidden border-primary/30">
+            <div className="border-b border-card-border bg-primary/5 px-5 py-4">
+              <div className="flex items-center gap-2">
+                <Check className="h-4 w-4 text-primary" />
+                <span className="font-serif text-lg font-medium">
+                  Discovery · {discoveryResult.platform}
+                </span>
               </div>
-            </CardContent>
-            <CardFooter>
-               <Button variant="outline" onClick={() => setDiscoveryResult(null)}>Fechar</Button>
-            </CardFooter>
+              <p className="mt-1 text-sm text-muted-foreground">{discoveryResult.coverageNote}</p>
+            </div>
+            <div className="divide-y divide-card-border">
+              {discoveryResult.agents.map((agent: any) => (
+                <div
+                  key={agent.externalId}
+                  className="flex items-center justify-between gap-4 px-5 py-4"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{agent.name}</span>
+                      <Pill tone="muted">{agent.role}</Pill>
+                    </div>
+                    <div className="mt-1 flex gap-3 text-xs text-muted-foreground">
+                      <span>{agent.proposedMetrics.length} métricas mapeadas</span>
+                      <span>· Confiança {agent.confidence}%</span>
+                    </div>
+                  </div>
+                  {agent.alreadyImported ? (
+                    <Pill tone="sage">Já na frota</Pill>
+                  ) : (
+                    <Button size="sm" onClick={() => handleImport([agent.externalId])}>
+                      <Download className="mr-1 h-4 w-4" />
+                      Importar &amp; admitir
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-card-border px-5 py-3">
+              <Button variant="outline" size="sm" onClick={() => setDiscoveryResult(null)}>
+                Fechar
+              </Button>
+            </div>
           </Card>
         )}
 
         {isError ? (
-          <ErrorState
-            title="Não foi possível carregar os conectores"
-            onRetry={() => refetch()}
-          />
-        ) : isLoading ? (
-          <div className="grid md:grid-cols-2 gap-4">
-            <Card><CardContent className="p-6"><div className="h-24 bg-muted animate-pulse rounded"></div></CardContent></Card>
-            <Card><CardContent className="p-6"><div className="h-24 bg-muted animate-pulse rounded"></div></CardContent></Card>
-          </div>
-        ) : connectors && connectors.length > 0 ? (
-          <div className="grid md:grid-cols-2 gap-4">
-            {connectors.map(connector => (
-            <Card key={connector.id} className="flex flex-col">
-              <CardHeader className="pb-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-lg">{connector.name}</CardTitle>
-                    <CardDescription>{connector.category}</CardDescription>
-                  </div>
-                  <Badge variant={connector.status === 'connected' ? 'default' : 'secondary'}>
-                    {connector.status === 'connected' ? 'Conectado' : 'Disponível'}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1 pb-4">
-                {connector.status === 'connected' && (
-                  <div className="text-sm flex flex-col gap-1 text-muted-foreground">
-                    <span><strong className="text-foreground">{connector.agentsDiscovered}</strong> agentes descobertos</span>
-                    <span>Último sync: {connector.lastSyncAt ? new Date(connector.lastSyncAt).toLocaleDateString() : 'Nunca'}</span>
-                  </div>
-                )}
-              </CardContent>
-              <CardFooter className="pt-0 border-t mt-auto p-4 bg-muted/20">
-                {connector.status === 'connected' ? (
-                  <Button 
-                    className="w-full" 
-                    variant="outline"
-                    onClick={() => handleDiscover(connector.id)}
-                    disabled={discoveringId === connector.id}
-                  >
-                    {discoveringId === connector.id ? (
-                      "Descobrindo..."
-                    ) : (
-                      <><Search className="h-4 w-4 mr-2" /> Rodar Discovery</>
-                    )}
-                  </Button>
-                ) : (
-                  <Button 
-                    className="w-full" 
-                    onClick={() => handleConnect(connector.platform)}
-                    disabled={connectPlatform.isPending}
-                  >
-                    <Link2 className="h-4 w-4 mr-2" /> Conectar
-                  </Button>
-                )}
-              </CardFooter>
-            </Card>
-            ))}
-          </div>
+          <ErrorState title="Não foi possível carregar os conectores" onRetry={() => refetch()} />
         ) : (
-          <Card className="p-10 text-center">
-            <div className="flex flex-col items-center gap-2 text-muted-foreground">
-              <Link2 className="h-8 w-8 opacity-50" />
-              <p className="font-medium text-foreground">Nenhum conector disponível</p>
-              <p className="text-sm">
-                Conecte uma plataforma para começar a descobrir agentes.
-              </p>
+          <Card className="overflow-hidden">
+            <div className="border-b border-card-border px-5 py-3">
+              <Eyebrow>Integrações disponíveis</Eyebrow>
             </div>
+            {isLoading ? (
+              <div className="divide-y divide-card-border">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="px-5 py-4">
+                    <div className="h-10 animate-pulse rounded bg-muted" />
+                  </div>
+                ))}
+              </div>
+            ) : connectors && connectors.length > 0 ? (
+              <div className="divide-y divide-card-border">
+                {connectors.map((connector) => {
+                  const connected = connector.status === "connected";
+                  return (
+                    <div
+                      key={connector.id}
+                      className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-card-border bg-secondary/60 text-muted-foreground">
+                          <Plug className="h-4 w-4" strokeWidth={1.75} />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{connector.name}</span>
+                            <Pill tone={connected ? "sage" : "muted"}>
+                              {connected ? "Conectado" : "Disponível"}
+                            </Pill>
+                          </div>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {connected
+                              ? `${connector.agentsDiscovered} agentes descobertos · último sync ${
+                                  connector.lastSyncAt
+                                    ? new Date(connector.lastSyncAt).toLocaleDateString("pt-BR")
+                                    : "nunca"
+                                }`
+                              : connector.category}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="shrink-0">
+                        {connected ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDiscover(connector.id)}
+                            disabled={discoveringId === connector.id}
+                          >
+                            {discoveringId === connector.id ? (
+                              "Descobrindo…"
+                            ) : (
+                              <>
+                                <Search className="mr-2 h-4 w-4" /> Rodar discovery
+                              </>
+                            )}
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            onClick={() => handleConnect(connector.platform)}
+                            disabled={connectPlatform.isPending}
+                          >
+                            <Link2 className="mr-2 h-4 w-4" /> Conectar
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2 px-5 py-12 text-center text-muted-foreground">
+                <Plug className="h-8 w-8 opacity-50" />
+                <p className="font-medium text-foreground">Nenhum conector disponível</p>
+                <p className="text-sm">Conecte uma plataforma para começar a descobrir agentes.</p>
+              </div>
+            )}
           </Card>
         )}
       </div>
