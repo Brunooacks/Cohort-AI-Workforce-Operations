@@ -7,18 +7,8 @@ import {
   Users,
   Plug,
   ArrowRight,
-  TrendingUp,
-  TrendingDown,
-  Minus,
 } from "lucide-react";
-
-const layers = [
-  { label: "Eficácia", score: 88, tone: "good" },
-  { label: "Eficiência", score: 74, tone: "warn" },
-  { label: "Adoção", score: 81, tone: "good" },
-  { label: "Governança", score: 67, tone: "warn" },
-  { label: "Valor", score: 92, tone: "good" },
-] as const;
+import LandingDemo from "@/components/landing-demo";
 
 const features = [
   {
@@ -51,12 +41,6 @@ const features = [
     title: "Plug-and-play",
     desc: "Conecta nas plataformas onde os agentes já rodam. Primeiro insight antes do café esfriar.",
   },
-];
-
-const verdicts = [
-  { label: "Promover", icon: TrendingUp, colorClass: "text-chart-1", count: "12" },
-  { label: "Mentorar", icon: Minus, colorClass: "text-chart-2", count: "7" },
-  { label: "Aposentar", icon: TrendingDown, colorClass: "text-chart-3", count: "3" },
 ];
 
 export default function LandingPage() {
@@ -156,62 +140,9 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Floating product preview */}
+        {/* Animated live demo */}
         <div className="relative mt-20">
-          <div
-            className="absolute -inset-x-10 -top-10 bottom-0 -z-10 opacity-40 blur-3xl"
-            style={{ background: "radial-gradient(60% 60% at 50% 0%, hsl(var(--primary) / 0.2), transparent 70%)" }}
-          />
-          <div className="rounded-2xl border border-card-border bg-card p-6 shadow-xl md:p-8">
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-                  Perfil de desempenho
-                </p>
-                <p className="mt-0.5 font-serif text-lg font-medium">Frota · 22 agentes em campanha</p>
-              </div>
-              <div className="text-right">
-                <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-                  Saúde média
-                </p>
-                <p className="font-serif text-3xl font-medium tabular-nums text-primary">80</p>
-              </div>
-            </div>
-
-            <div className="grid gap-6 md:grid-cols-[1.4fr_1fr]">
-              <div className="space-y-3.5">
-                {layers.map((l) => (
-                  <div key={l.label}>
-                    <div className="mb-1.5 flex items-center justify-between text-sm">
-                      <span className="font-medium text-foreground">{l.label}</span>
-                      <span className="font-mono font-semibold tabular-nums">{l.score}</span>
-                    </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
-                      <div
-                        className={`h-full rounded-full ${l.tone === "good" ? "bg-chart-1" : "bg-chart-2"}`}
-                        style={{ width: `${l.score}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-3 gap-3 md:grid-cols-1 md:content-start">
-                {verdicts.map((v) => (
-                  <div
-                    key={v.label}
-                    className="flex flex-col gap-3 rounded-xl border border-card-border bg-background p-3 text-center md:flex-row md:items-center md:text-left"
-                  >
-                    <v.icon className={`mx-auto h-5 w-5 md:mx-0 ${v.colorClass}`} />
-                    <div>
-                      <p className="font-serif text-xl font-medium leading-none tabular-nums">{v.count}</p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">{v.label}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          <LandingDemo />
         </div>
       </section>
 
