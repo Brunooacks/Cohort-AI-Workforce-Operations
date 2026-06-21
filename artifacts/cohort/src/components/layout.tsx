@@ -17,6 +17,8 @@ import {
   Search,
   Bell,
   HelpCircle,
+  Settings,
+  UserCircle,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -27,6 +29,7 @@ import { Eyebrow, Pill } from "@/components/cohort";
 import { CohortMark } from "@/components/logo";
 import { useGetFleetSummary } from "@workspace/api-client-react";
 import { platformLabel } from "@/lib/platforms";
+import { getTrialInfo } from "@/lib/plan";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -59,6 +62,8 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { name: "Admissão", href: "/admissao", icon: UserPlus },
       { name: "Conectores", href: "/conectores", icon: Plug },
+      { name: "Configurações", href: "/configuracoes", icon: Settings },
+      { name: "Perfil", href: "/perfil", icon: UserCircle },
     ],
   },
 ];
@@ -110,6 +115,39 @@ function DetectorV2Card() {
       <Button variant="outline" size="sm" className="w-full" disabled>
         Ativar
       </Button>
+    </div>
+  );
+}
+
+function PlanCard({ onNavigate }: { onNavigate?: () => void }) {
+  const trial = getTrialInfo();
+  return (
+    <div className="rounded-xl border border-card-border bg-card p-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="text-sm font-medium text-foreground">{trial.planName}</span>
+        <Pill tone="ochre">Trial</Pill>
+      </div>
+      <div className="mb-1 flex items-baseline gap-1.5">
+        <span className="font-mono text-lg font-medium tabular-nums text-foreground">
+          {trial.daysRemaining}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          {trial.daysRemaining === 1 ? "dia restante" : "dias restantes"}
+        </span>
+      </div>
+      <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-secondary">
+        <div
+          className="h-full rounded-full bg-chart-2"
+          style={{ width: `${Math.round(trial.progress * 100)}%` }}
+        />
+      </div>
+      <Link
+        href="/configuracoes#faturamento"
+        onClick={onNavigate}
+        className="text-xs font-medium text-chart-1 transition-colors hover:text-foreground"
+      >
+        Comparar planos →
+      </Link>
     </div>
   );
 }
@@ -168,11 +206,15 @@ function Wordmark() {
   );
 }
 
-function UserCard({ onSignOut }: { onSignOut: () => void }) {
+function UserCard({ onSignOut, onNavigate }: { onSignOut: () => void; onNavigate?: () => void }) {
   const { user } = useUser();
   return (
     <div className="rounded-xl border border-card-border bg-card p-3">
-      <div className="mb-3 flex items-center gap-3">
+      <Link
+        href="/perfil"
+        onClick={onNavigate}
+        className="mb-3 flex items-center gap-3 rounded-lg transition-colors hover:opacity-80"
+      >
         <Avatar className="h-9 w-9 border border-border">
           <AvatarImage src={user?.imageUrl} />
           <AvatarFallback className="text-xs">{user?.firstName?.charAt(0) || "U"}</AvatarFallback>
@@ -183,7 +225,7 @@ function UserCard({ onSignOut }: { onSignOut: () => void }) {
             {user?.primaryEmailAddress?.emailAddress}
           </span>
         </div>
-      </div>
+      </Link>
       <Button
         variant="ghost"
         size="sm"
@@ -224,6 +266,22 @@ function PerspectiveToggle() {
   );
 }
 
+function TopbarAvatar() {
+  const { user } = useUser();
+  return (
+    <Link
+      href="/perfil"
+      className="rounded-full transition-opacity hover:opacity-80"
+      aria-label="Perfil"
+    >
+      <Avatar className="h-8 w-8 border border-border">
+        <AvatarImage src={user?.imageUrl} />
+        <AvatarFallback className="text-xs">{user?.firstName?.charAt(0) || "U"}</AvatarFallback>
+      </Avatar>
+    </Link>
+  );
+}
+
 function GlobalSearch() {
   const { search, setSearch } = useAppShell();
   const [, setLocation] = useLocation();
@@ -253,6 +311,7 @@ export function AppLayout({ children, title, breadcrumbs }: LayoutProps) {
   const { signOut } = useClerk();
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
   const handleSignOut = () => signOut({ redirectUrl: basePath || "/" });
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <div className="flex min-h-screen w-full bg-background">
@@ -264,7 +323,8 @@ export function AppLayout({ children, title, breadcrumbs }: LayoutProps) {
         <div className="flex-1 overflow-y-auto px-3 py-2">
           <SidebarNav />
         </div>
-        <div className="p-3">
+        <div className="space-y-3 p-3">
+          <PlanCard />
           <UserCard onSignOut={handleSignOut} />
         </div>
       </aside>
@@ -274,7 +334,7 @@ export function AppLayout({ children, title, breadcrumbs }: LayoutProps) {
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-3 border-b border-border bg-background/85 px-4 backdrop-blur sm:px-6">
           <div className="flex min-w-0 items-center gap-2 sm:gap-4">
             {/* Mobile menu */}
-            <Sheet>
+            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="md:hidden">
                   <Menu className="h-5 w-5" />
@@ -286,10 +346,11 @@ export function AppLayout({ children, title, breadcrumbs }: LayoutProps) {
                   <Wordmark />
                 </div>
                 <div className="flex-1 overflow-y-auto px-3 py-4">
-                  <SidebarNav />
+                  <SidebarNav onNavigate={() => setMobileOpen(false)} />
                 </div>
-                <div className="p-3">
-                  <UserCard onSignOut={handleSignOut} />
+                <div className="space-y-3 p-3">
+                  <PlanCard onNavigate={() => setMobileOpen(false)} />
+                  <UserCard onSignOut={handleSignOut} onNavigate={() => setMobileOpen(false)} />
                 </div>
               </SheetContent>
             </Sheet>
@@ -324,6 +385,7 @@ export function AppLayout({ children, title, breadcrumbs }: LayoutProps) {
             <Button variant="ghost" size="icon" className="text-muted-foreground" aria-label="Ajuda">
               <HelpCircle className="h-[18px] w-[18px]" strokeWidth={1.75} />
             </Button>
+            <TopbarAvatar />
           </div>
         </header>
 

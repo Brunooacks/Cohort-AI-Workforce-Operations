@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { ClerkProvider, SignIn, SignUp, Show, useClerk } from "@clerk/react";
+import { ClerkProvider, SignIn, SignUp, Show, useClerk, useUser } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
 import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from "wouter";
@@ -19,7 +19,11 @@ import ConnectorsPage from "@/pages/connectors";
 import AlertsPage from "@/pages/alerts";
 import GovernancePage from "@/pages/governanca";
 import BenchmarksPage from "@/pages/benchmarks";
+import SettingsPage from "@/pages/configuracoes";
+import ProfilePage from "@/pages/perfil";
+import OnboardingPage from "@/pages/onboarding";
 import NotFound from "@/pages/not-found";
+import { isOnboardingComplete } from "@/lib/onboarding";
 
 const clerkPubKey = publishableKeyFromHost(
   window.location.hostname,
@@ -117,11 +121,32 @@ function HomeRedirect() {
   );
 }
 
-function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
+function OnboardingGate({ children }: { children: React.ReactNode }) {
+  const { isLoaded, user } = useUser();
+  if (!isLoaded) return null;
+  if (user && !isOnboardingComplete(user.id)) {
+    return <Redirect to="/onboarding" />;
+  }
+  return <>{children}</>;
+}
+
+function ProtectedRoute({
+  component: Component,
+  requireOnboarding = true,
+}: {
+  component: React.ComponentType;
+  requireOnboarding?: boolean;
+}) {
   return (
     <>
       <Show when="signed-in">
-        <Component />
+        {requireOnboarding ? (
+          <OnboardingGate>
+            <Component />
+          </OnboardingGate>
+        ) : (
+          <Component />
+        )}
       </Show>
       <Show when="signed-out">
         <Redirect to="/" />
@@ -214,6 +239,15 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/benchmarks">
               <ProtectedRoute component={BenchmarksPage} />
+            </Route>
+            <Route path="/configuracoes">
+              <ProtectedRoute component={SettingsPage} />
+            </Route>
+            <Route path="/perfil">
+              <ProtectedRoute component={ProfilePage} />
+            </Route>
+            <Route path="/onboarding">
+              <ProtectedRoute component={OnboardingPage} requireOnboarding={false} />
             </Route>
             
             <Route component={NotFound} />

@@ -1,34 +1,48 @@
+import { useRef, useState } from "react";
+import { useLocation } from "wouter";
+import { ArrowLeft, ArrowRight, CheckCircle2, Sparkles, ChevronDown } from "lucide-react";
 import { AppLayout } from "@/components/layout";
 import {
   useCreateAgent,
   useAnalyzeAgentSource,
   useFetchAgentSource,
+  useListConnectors,
   type AgentDraft,
+  type AgentInput,
+  type DraftMetric,
   type DraftMetricLayer,
 } from "@workspace/api-client-react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { useRef, useState } from "react";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { useLocation } from "wouter";
-import { Card, CardContent } from "@/components/ui/card";
-import { PageHeading, Eyebrow } from "@/components/cohort";
+import { PageHeading, Eyebrow, Pill } from "@/components/cohort";
+import { PLATFORM_LABELS } from "@/lib/platforms";
+import { cn } from "@/lib/utils";
 
-const formSchema = z.object({
-  name: z.string().min(2, "Nome é obrigatório"),
-  role: z.string().min(2, "Papel é obrigatório"),
-  platform: z.string().min(1, "Plataforma é obrigatória"),
-  bio: z.string().min(10, "Forneça uma breve descrição"),
-  businessOwner: z.string().optional(),
-  technicalOwner: z.string().optional(),
-  autonomyLevel: z.enum(["autonomous", "escalates", "restricted"]).default("escalates"),
-});
+const STEPS = [
+  "Identidade",
+  "Job Description",
+  "Responsabilidade",
+  "Autonomia",
+  "Origem",
+  "Conectar",
+  "Probation",
+] as const;
+
+const AUTONOMY_OPTIONS: { value: AgentInput["autonomyLevel"]; label: string; desc: string }[] = [
+  { value: "autonomous", label: "Autônoma", desc: "Decide e age sem aprovação humana" },
+  { value: "escalates", label: "Escala", desc: "Age, mas escala casos sensíveis" },
+  { value: "restricted", label: "Restrita", desc: "Só age com aprovação humana" },
+];
 
 const LAYER_ORDER: DraftMetricLayer[] = [
   "efficacy",
@@ -45,11 +59,75 @@ const LAYER_LABELS: Record<DraftMetricLayer, string> = {
   value: "Valor",
 };
 
-// Kept in sync with MAX_CONTENT_LENGTH in artifacts/api-server/src/lib/analyze.ts
 const MAX_CONTENT_LENGTH = 100_000;
 
-function clean(arr: string[]): string[] {
-  return arr.map((s) => s.trim()).filter(Boolean);
+interface WizardData {
+  name: string;
+  tagline: string;
+  role: string;
+  platform: string;
+  bio: string;
+  shouldDo: string;
+  shouldNotDo: string;
+  businessOwner: string;
+  technicalOwner: string;
+  governanceSponsor: string;
+  changeApprover: string;
+  autonomyLevel: NonNullable<AgentInput["autonomyLevel"]>;
+  autonomyNotes: string;
+  limits: string;
+  businessCaseDescription: string;
+  baseline: string;
+  targetPayback: string;
+  dataSource: string;
+  probationWeeks: string;
+}
+
+const INITIAL: WizardData = {
+  name: "",
+  tagline: "",
+  role: "",
+  platform: "openai-assistants",
+  bio: "",
+  shouldDo: "",
+  shouldNotDo: "",
+  businessOwner: "",
+  technicalOwner: "",
+  governanceSponsor: "",
+  changeApprover: "",
+  autonomyLevel: "escalates",
+  autonomyNotes: "",
+  limits: "",
+  businessCaseDescription: "",
+  baseline: "",
+  targetPayback: "",
+  dataSource: "",
+  probationWeeks: "4",
+};
+
+function toLines(value: string): string[] {
+  return value
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function StepField({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label className="block text-sm font-medium text-foreground">{label}</label>
+      {children}
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+    </div>
+  );
 }
 
 export default function AdmissionPage() {
@@ -58,122 +136,63 @@ export default function AdmissionPage() {
   const createAgent = useCreateAgent();
   const analyze = useAnalyzeAgentSource();
   const fetchSource = useFetchAgentSource();
+  const { data: connectors } = useListConnectors();
 
+  const [step, setStep] = useState(0);
+  const [data, setData] = useState<WizardData>(INITIAL);
+  const [metrics, setMetrics] = useState<DraftMetric[] | null>(null);
+
+  // AI assist (optional)
+  const [aiOpen, setAiOpen] = useState(false);
   const [source, setSource] = useState("");
   const [importUrl, setImportUrl] = useState("");
-  const [draft, setDraft] = useState<AgentDraft | null>(null);
-  const [draftApplied, setDraftApplied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
   const overLimit = source.length > MAX_CONTENT_LENGTH;
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "",
-      role: "",
-      platform: "openai",
-      bio: "",
-      businessOwner: "",
-      technicalOwner: "",
-      autonomyLevel: "escalates",
-    },
-  });
+  const set = <K extends keyof WizardData>(key: K, value: WizardData[K]) =>
+    setData((prev) => ({ ...prev, [key]: value }));
 
-  function patchDraft(patch: Partial<AgentDraft>) {
-    setDraft((prev) => (prev ? { ...prev, ...patch } : prev));
-  }
+  const ownersComplete =
+    data.businessOwner.trim() && data.technicalOwner.trim() && data.governanceSponsor.trim();
 
-  function updateMetric(index: number, patch: Partial<AgentDraft["proposedMetrics"][number]>) {
-    setDraft((prev) => {
-      if (!prev) return prev;
-      const proposedMetrics = prev.proposedMetrics.map((m, i) =>
-        i === index ? { ...m, ...patch } : m,
-      );
-      return { ...prev, proposedMetrics };
-    });
-  }
+  const canAdvance = (() => {
+    if (step === 0) return data.name.trim().length >= 2 && data.role.trim().length >= 2;
+    if (step === 2) return Boolean(ownersComplete);
+    return true;
+  })();
 
-  function removeMetric(index: number) {
-    setDraft((prev) =>
-      prev
-        ? { ...prev, proposedMetrics: prev.proposedMetrics.filter((_, i) => i !== index) }
-        : prev,
+  function applyDraft(d: AgentDraft) {
+    setData((prev) => ({
+      ...prev,
+      name: d.name || prev.name,
+      tagline: d.tagline || prev.tagline,
+      role: d.role || prev.role,
+      bio: d.bio || prev.bio,
+      shouldDo: d.shouldDo?.length ? d.shouldDo.join("\n") : prev.shouldDo,
+      shouldNotDo: d.shouldNotDo?.length ? d.shouldNotDo.join("\n") : prev.shouldNotDo,
+      autonomyLevel: d.autonomyLevel ?? prev.autonomyLevel,
+      autonomyNotes: d.autonomyNotes || prev.autonomyNotes,
+      limits: d.limits?.length ? d.limits.join("\n") : prev.limits,
+      businessCaseDescription: d.businessCase?.description || prev.businessCaseDescription,
+      baseline: d.businessCase?.baseline || prev.baseline,
+      targetPayback: d.businessCase?.targetPayback || prev.targetPayback,
+    }));
+    setMetrics(
+      d.proposedMetrics
+        ?.filter((m) => m.label.trim())
+        .map((m) => ({
+          layer: m.layer,
+          label: m.label.trim(),
+          unit: m.unit?.trim() || "%",
+          target: m.target?.trim() ?? "",
+          rationale: m.rationale,
+        })) ?? null,
     );
-  }
-
-  function addMetric(layer: DraftMetricLayer) {
-    setDraft((prev) =>
-      prev
-        ? {
-            ...prev,
-            proposedMetrics: [
-              ...prev.proposedMetrics,
-              { layer, label: "", unit: "%", target: "" },
-            ],
-          }
-        : prev,
-    );
-  }
-
-  function applyDraftToForm(d: AgentDraft) {
-    if (d.name) form.setValue("name", d.name);
-    if (d.role) form.setValue("role", d.role);
-    if (d.bio) form.setValue("bio", d.bio);
-    if (d.autonomyLevel) form.setValue("autonomyLevel", d.autonomyLevel);
-  }
-
-  function onApplyDraft() {
-    if (!draft) return;
-    applyDraftToForm(draft);
-    setDraftApplied(true);
+    setAiOpen(false);
     toast({
       title: "Rascunho aplicado",
-      description: "Os campos da admissão foram preenchidos. Revise antes de admitir.",
+      description: "Os campos do cadastro foram preenchidos. Revise cada passo antes de admitir.",
     });
-  }
-
-  function onDiscardDraft() {
-    setDraft(null);
-    setDraftApplied(false);
-  }
-
-  function onAnalyze() {
-    if (source.trim().length < 10) {
-      toast({
-        variant: "destructive",
-        title: "Material insuficiente",
-        description: "Cole o código e/ou as definições de skills do agente.",
-      });
-      return;
-    }
-    if (overLimit) {
-      toast({
-        variant: "destructive",
-        title: "Conteúdo muito grande",
-        description: `Reduza para até ${MAX_CONTENT_LENGTH.toLocaleString("pt-BR")} caracteres.`,
-      });
-      return;
-    }
-    analyze.mutate(
-      {
-        data: {
-          content: source,
-          platform: form.getValues("platform") || undefined,
-          nameHint: form.getValues("name") || undefined,
-        },
-      },
-      {
-        onSuccess: (d) => {
-          setDraft(d);
-          setDraftApplied(false);
-          toast({
-            title: "Rascunho gerado",
-            description: "Revise e edite o esboço, depois clique em Aplicar ao formulário.",
-          });
-        },
-      },
-    );
   }
 
   function onImportUrl() {
@@ -190,9 +209,7 @@ export default function AdmissionPage() {
       { data: { url } },
       {
         onSuccess: (res) => {
-          setSource((prev) =>
-            prev ? `${prev}\n\n${res.content}` : res.content,
-          );
+          setSource((prev) => (prev ? `${prev}\n\n${res.content}` : res.content));
           setImportUrl("");
           toast({
             title: "Material importado",
@@ -220,6 +237,35 @@ export default function AdmissionPage() {
     );
   }
 
+  function onAnalyze() {
+    if (source.trim().length < 10) {
+      toast({
+        variant: "destructive",
+        title: "Material insuficiente",
+        description: "Cole o código e/ou as definições de skills do agente.",
+      });
+      return;
+    }
+    if (overLimit) {
+      toast({
+        variant: "destructive",
+        title: "Conteúdo muito grande",
+        description: `Reduza para até ${MAX_CONTENT_LENGTH.toLocaleString("pt-BR")} caracteres.`,
+      });
+      return;
+    }
+    analyze.mutate(
+      {
+        data: {
+          content: source,
+          platform: data.platform || undefined,
+          nameHint: data.name || undefined,
+        },
+      },
+      { onSuccess: applyDraft },
+    );
+  }
+
   async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -228,34 +274,76 @@ export default function AdmissionPage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    const data = {
-      ...values,
-      ...(draft && draftApplied
-        ? {
-            tagline: draft.tagline,
-            shouldDo: clean(draft.shouldDo),
-            shouldNotDo: clean(draft.shouldNotDo),
-            autonomyNotes: draft.autonomyNotes,
-            limits: clean(draft.limits),
-            baseline: draft.businessCase.baseline,
-            targetPayback: draft.businessCase.targetPayback,
-            businessCaseDescription: draft.businessCase.description,
-            proposedMetrics: draft.proposedMetrics
-              .filter((m) => m.label.trim())
-              .map((m) => ({
-                layer: m.layer,
-                label: m.label.trim(),
-                unit: m.unit.trim() || "%",
-                target: m.target.trim(),
-                rationale: m.rationale,
-              })),
-          }
-        : {}),
+  function next() {
+    if (!canAdvance) {
+      if (step === 0) {
+        toast({
+          variant: "destructive",
+          title: "Identidade incompleta",
+          description: "Informe ao menos nome e papel da agente.",
+        });
+      } else if (step === 2) {
+        toast({
+          variant: "destructive",
+          title: "Cadeia de donos incompleta",
+          description: "Defina dono de negócio, dono técnico e sponsor de governança.",
+        });
+      }
+      return;
+    }
+    setStep((s) => Math.min(s + 1, STEPS.length - 1));
+  }
+
+  function submit() {
+    if (!ownersComplete) {
+      setStep(2);
+      toast({
+        variant: "destructive",
+        title: "Cadeia de donos incompleta",
+        description: "Sem os três donos, a agente não pode ir para produção.",
+      });
+      return;
+    }
+
+    const autonomyNotes = [
+      data.autonomyNotes.trim(),
+      data.changeApprover.trim() ? `Aprovador de mudanças: ${data.changeApprover.trim()}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const businessCaseDescription = [
+      data.businessCaseDescription.trim(),
+      data.dataSource.trim() ? `Fonte de dados: ${data.dataSource.trim()}` : "",
+      data.probationWeeks.trim()
+        ? `Período de probation: ${data.probationWeeks.trim()} semanas`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const payload: AgentInput = {
+      name: data.name.trim(),
+      role: data.role.trim(),
+      platform: data.platform,
+      bio: data.bio.trim() || data.tagline.trim() || `${data.role.trim()} na frota.`,
+      tagline: data.tagline.trim() || undefined,
+      shouldDo: toLines(data.shouldDo),
+      shouldNotDo: toLines(data.shouldNotDo),
+      autonomyLevel: data.autonomyLevel,
+      autonomyNotes: autonomyNotes || undefined,
+      limits: toLines(data.limits),
+      businessOwner: data.businessOwner.trim() || undefined,
+      technicalOwner: data.technicalOwner.trim() || undefined,
+      governanceSponsor: data.governanceSponsor.trim() || undefined,
+      baseline: data.baseline.trim() || undefined,
+      targetPayback: data.targetPayback.trim() || undefined,
+      businessCaseDescription: businessCaseDescription || undefined,
+      ...(metrics && metrics.length > 0 ? { proposedMetrics: metrics } : {}),
     };
 
     createAgent.mutate(
-      { data },
+      { data: payload },
       {
         onSuccess: (agent) => {
           toast({
@@ -268,7 +356,7 @@ export default function AdmissionPage() {
           toast({
             variant: "destructive",
             title: "Erro na admissão",
-            description: "Ocorreu um erro ao registrar o agente.",
+            description: "Ocorreu um erro ao registrar a agente.",
           });
         },
       },
@@ -276,430 +364,464 @@ export default function AdmissionPage() {
   }
 
   return (
-    <AppLayout breadcrumbs={[{ label: "Workspace" }, { label: "Admissão" }]}>
-      <div className="mx-auto max-w-2xl space-y-7 animate-in fade-in duration-500">
+    <AppLayout breadcrumbs={[{ label: "Conta" }, { label: "Admissão" }]}>
+      <div className="mx-auto max-w-3xl space-y-7 animate-in fade-in duration-500">
         <PageHeading
-          eyebrow="Workspace"
-          title="Cadastrar agente"
-          subtitle="Gere a Carteira de Trabalho para um novo agente ingressar na frota."
+          eyebrow="Conta · Admissão"
+          title="Cadastrar nova agente"
+          subtitle="A Carteira de Trabalho começa antes do agente existir. Cada campo evita uma falha futura."
         />
 
-        <Card>
-          <div className="border-b border-card-border px-6 py-4">
-            <Eyebrow>Discovery por código e skills</Eyebrow>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Cole o código e as definições de skills do agente. A IA propõe uma Carteira de Trabalho
-              e métricas editáveis.
-            </p>
-          </div>
-          <CardContent className="space-y-4 pt-6">
-            <Textarea
-              value={source}
-              onChange={(e) => setSource(e.target.value)}
-              placeholder="Cole aqui o código, prompts de sistema e/ou definições de skills do agente..."
-              className="min-h-[160px] font-mono text-xs"
-            />
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".txt,.md,.json,.yaml,.yml,.ts,.tsx,.js,.jsx,.py,.toml"
-              className="hidden"
-              onChange={onUpload}
-            />
-            <div className="space-y-1.5 rounded-md border border-card-border bg-muted/30 p-3">
-              <span className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
-                Importar de um repositório Git ou URL
-              </span>
-              <div className="flex flex-wrap items-center gap-2">
-                <Input
-                  value={importUrl}
-                  onChange={(e) => setImportUrl(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      if (!fetchSource.isPending) onImportUrl();
-                    }
-                  }}
-                  placeholder="https://github.com/org/repo ou URL de um arquivo público"
-                  className="min-w-[16rem] flex-1 font-mono text-xs"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={onImportUrl}
-                  disabled={fetchSource.isPending}
-                >
-                  {fetchSource.isPending ? "Importando..." : "Importar"}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Buscamos os arquivos de código e skills relevantes (limites de
-                tamanho e tipo aplicados) e os adicionamos ao campo acima.
-              </p>
-            </div>
-            <p
-              className={`text-right font-mono text-xs ${
-                overLimit ? "text-destructive" : "text-muted-foreground"
-              }`}
+        {/* Stepper */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {STEPS.map((label, i) => (
+            <button
+              key={label}
+              type="button"
+              onClick={() => setStep(i)}
+              className={cn(
+                "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                step === i
+                  ? "bg-primary text-primary-foreground"
+                  : step > i
+                    ? "text-chart-1 hover:bg-secondary/60"
+                    : "text-muted-foreground hover:bg-secondary/60",
+              )}
             >
-              {source.length.toLocaleString("pt-BR")} /{" "}
-              {MAX_CONTENT_LENGTH.toLocaleString("pt-BR")} caracteres
-            </p>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                Enviar arquivo
-              </Button>
-              <Button
-                type="button"
-                onClick={onAnalyze}
-                disabled={analyze.isPending || overLimit}
-              >
-                {analyze.isPending ? "Analisando..." : "Analisar com IA"}
-              </Button>
-            </div>
+              {step > i ? (
+                <CheckCircle2 className="h-3.5 w-3.5" />
+              ) : (
+                <span className="font-mono">{(i + 1).toString().padStart(2, "0")}</span>
+              )}
+              {label}
+            </button>
+          ))}
+        </div>
 
-            {analyze.isPending && (
-              <p className="text-sm text-muted-foreground">
-                Analisando o material do agente…
-              </p>
-            )}
-            {analyze.isError && (
-              <p className="text-sm text-destructive">
-                {(analyze.error as { status?: number } | null)?.status === 429
-                  ? "Limite de uso da IA atingido. Aguarde alguns instantes e tente novamente."
-                  : (analyze.error as { status?: number } | null)?.status === 413
-                    ? `Conteúdo muito grande. Reduza para até ${MAX_CONTENT_LENGTH.toLocaleString("pt-BR")} caracteres.`
-                    : "Não foi possível analisar o material. Verifique o conteúdo e tente novamente."}
-              </p>
-            )}
-
-            {draft && (
-              <div className="space-y-5 rounded-md border border-card-border bg-muted/30 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <Eyebrow>Rascunho proposto</Eyebrow>
-                    {draft.summary && (
-                      <p className="mt-1 text-sm text-muted-foreground">{draft.summary}</p>
-                    )}
-                    <p className="mt-1 text-xs italic text-muted-foreground">
-                      Esboço a confirmar — revise e ajuste antes de aplicar.
-                    </p>
-                  </div>
-                  <span className="shrink-0 font-mono text-xs text-muted-foreground">
-                    confiança {Math.round(draft.confidence)}%
-                  </span>
-                </div>
-
-                <div className="space-y-1.5">
-                  <FormLabel>Tagline</FormLabel>
-                  <Input
-                    value={draft.tagline}
-                    onChange={(e) => patchDraft({ tagline: e.target.value })}
-                    placeholder="Frase curta de posicionamento"
-                  />
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <FormLabel>Deve fazer (um por linha)</FormLabel>
-                    <Textarea
-                      value={draft.shouldDo.join("\n")}
-                      onChange={(e) => patchDraft({ shouldDo: e.target.value.split("\n") })}
-                      className="min-h-[110px] text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <FormLabel>Não deve fazer (um por linha)</FormLabel>
-                    <Textarea
-                      value={draft.shouldNotDo.join("\n")}
-                      onChange={(e) => patchDraft({ shouldNotDo: e.target.value.split("\n") })}
-                      className="min-h-[110px] text-sm"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <FormLabel>Limites operacionais (um por linha)</FormLabel>
-                  <Textarea
-                    value={draft.limits.join("\n")}
-                    onChange={(e) => patchDraft({ limits: e.target.value.split("\n") })}
-                    className="min-h-[80px] text-sm"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <FormLabel>Notas de autonomia</FormLabel>
-                  <Textarea
-                    value={draft.autonomyNotes ?? ""}
-                    onChange={(e) => patchDraft({ autonomyNotes: e.target.value })}
-                    className="min-h-[60px] text-sm"
-                  />
-                </div>
-
-                <div className="space-y-3 border-t border-card-border pt-4">
-                  <Eyebrow>Caso de negócio</Eyebrow>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <FormLabel>Linha de base</FormLabel>
-                      <Input
-                        value={draft.businessCase.baseline}
-                        onChange={(e) =>
-                          patchDraft({
-                            businessCase: { ...draft.businessCase, baseline: e.target.value },
-                          })
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <FormLabel>Payback alvo</FormLabel>
-                      <Input
-                        value={draft.businessCase.targetPayback}
-                        onChange={(e) =>
-                          patchDraft({
-                            businessCase: { ...draft.businessCase, targetPayback: e.target.value },
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <FormLabel>Descrição</FormLabel>
-                    <Textarea
-                      value={draft.businessCase.description}
-                      onChange={(e) =>
-                        patchDraft({
-                          businessCase: { ...draft.businessCase, description: e.target.value },
-                        })
-                      }
-                      className="min-h-[60px] text-sm"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-4 border-t border-card-border pt-4">
-                  <Eyebrow>Métricas propostas (5 camadas)</Eyebrow>
-                  {LAYER_ORDER.map((layer) => {
-                    const rows = draft.proposedMetrics
-                      .map((m, i) => ({ m, i }))
-                      .filter((x) => x.m.layer === layer);
-                    return (
-                      <div key={layer} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
-                            {LAYER_LABELS[layer]}
-                          </span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => addMetric(layer)}
-                          >
-                            + Adicionar
-                          </Button>
-                        </div>
-                        {rows.length === 0 && (
-                          <p className="text-xs text-muted-foreground">Nenhuma métrica nesta camada.</p>
-                        )}
-                        {rows.map(({ m, i }) => (
-                          <div key={i} className="grid grid-cols-[1fr_5rem_6rem_auto] gap-2">
-                            <Input
-                              value={m.label}
-                              onChange={(e) => updateMetric(i, { label: e.target.value })}
-                              placeholder="Rótulo"
-                              className="text-sm"
-                            />
-                            <Input
-                              value={m.unit}
-                              onChange={(e) => updateMetric(i, { unit: e.target.value })}
-                              placeholder="Unid."
-                              className="text-sm"
-                            />
-                            <Input
-                              value={m.target}
-                              onChange={(e) => updateMetric(i, { target: e.target.value })}
-                              placeholder="Meta"
-                              className="text-sm"
-                            />
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeMetric(i)}
-                            >
-                              Remover
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-card-border pt-4">
-                  <p className="text-xs text-muted-foreground">
-                    {draftApplied
-                      ? "Rascunho aplicado ao formulário abaixo."
-                      : "Esboço a confirmar — clique para preencher a admissão."}
-                  </p>
-                  <div className="flex gap-2">
-                    <Button type="button" variant="ghost" onClick={onDiscardDraft}>
-                      Descartar
-                    </Button>
-                    <Button type="button" onClick={onApplyDraft}>
-                      Aplicar ao formulário
-                    </Button>
-                  </div>
-                </div>
+        <Card className="p-6">
+          {/* STEP 1 — Identidade */}
+          {step === 0 && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="font-serif text-xl font-medium text-foreground">Identidade</h2>
+                <p className="text-sm text-muted-foreground">Quem é a agente e onde ela opera.</p>
               </div>
-            )}
-          </CardContent>
-        </Card>
 
-        <Card>
-          <div className="border-b border-card-border px-6 py-4">
-            <Eyebrow>Identidade básica</Eyebrow>
-            <p className="mt-0.5 text-sm text-muted-foreground">Informações principais do agente</p>
-          </div>
-          <CardContent className="pt-6">
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nome do Agente</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ex: SupportBot v2" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+              {/* AI assist */}
+              <div className="rounded-xl border border-card-border bg-secondary/30">
+                <button
+                  type="button"
+                  onClick={() => setAiOpen((v) => !v)}
+                  className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
+                >
+                  <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <Sparkles className="h-4 w-4 text-chart-2" strokeWidth={1.75} />
+                    Pré-preencher com IA (opcional)
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 text-muted-foreground transition-transform",
+                      aiOpen && "rotate-180",
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="role"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Papel Funcional</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ex: L1 Customer Support" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="platform"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Plataforma Base</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione a plataforma" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="openai">OpenAI Assistants</SelectItem>
-                            <SelectItem value="anthropic">Anthropic Claude</SelectItem>
-                            <SelectItem value="langchain">LangChain Custom</SelectItem>
-                            <SelectItem value="flowise">Flowise</SelectItem>
-                            <SelectItem value="custom">Custom API</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="autonomyLevel"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nível de Autonomia</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione o nível" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="autonomous">Totalmente Autônomo (Pode agir)</SelectItem>
-                            <SelectItem value="escalates">Escalador (Pede ajuda)</SelectItem>
-                            <SelectItem value="restricted">Restrito (Apenas rascunho)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="bio"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Descrição (Bio)</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Descreva o propósito deste agente e seu escopo de atuação..."
-                          className="resize-none"
-                          {...field}
+                </button>
+                {aiOpen && (
+                  <div className="space-y-3 border-t border-card-border px-4 py-4">
+                    <p className="text-xs text-muted-foreground">
+                      Cole o código, prompts e definições de skills da agente. A IA propõe persona,
+                      Carteira de Trabalho e métricas — editáveis nos próximos passos.
+                    </p>
+                    <Textarea
+                      value={source}
+                      onChange={(e) => setSource(e.target.value)}
+                      placeholder="Cole aqui o código, prompts de sistema e/ou skills da agente…"
+                      className="min-h-[120px] font-mono text-xs"
+                    />
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".txt,.md,.json,.yaml,.yml,.ts,.tsx,.js,.jsx,.py,.toml"
+                      className="hidden"
+                      onChange={onUpload}
+                    />
+                    <div className="space-y-1.5 rounded-md border border-card-border bg-muted/30 p-3">
+                      <span className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
+                        Importar de um repositório Git ou URL
+                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Input
+                          value={importUrl}
+                          onChange={(e) => setImportUrl(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              if (!fetchSource.isPending) onImportUrl();
+                            }
+                          }}
+                          placeholder="https://github.com/org/repo ou URL de um arquivo público"
+                          className="min-w-[16rem] flex-1 font-mono text-xs"
                         />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={onImportUrl}
+                          disabled={fetchSource.isPending}
+                        >
+                          {fetchSource.isPending ? "Importando..." : "Importar"}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Buscamos os arquivos de código e skills relevantes (limites de tamanho e tipo
+                        aplicados) e os adicionamos ao campo acima.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        Enviar arquivo
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={onAnalyze}
+                        disabled={analyze.isPending || overLimit}
+                      >
+                        {analyze.isPending ? "Analisando…" : "Analisar com IA"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <StepField label="Nome">
+                  <Input
+                    value={data.name}
+                    onChange={(e) => set("name", e.target.value)}
+                    placeholder="Ex.: Júlia"
+                  />
+                </StepField>
+                <StepField label="Papel">
+                  <Input
+                    value={data.role}
+                    onChange={(e) => set("role", e.target.value)}
+                    placeholder="Ex.: Pré-qualificação Inbound"
+                  />
+                </StepField>
+              </div>
+              <StepField label="Tagline" hint="Uma frase que resume a missão da agente.">
+                <Input
+                  value={data.tagline}
+                  onChange={(e) => set("tagline", e.target.value)}
+                  placeholder="Ex.: Qualifica leads antes do time comercial"
                 />
+              </StepField>
+              <StepField label="Plataforma">
+                <Select value={data.platform} onValueChange={(v) => set("platform", v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(PLATFORM_LABELS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </StepField>
+            </div>
+          )}
 
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-                  <FormField
-                    control={form.control}
-                    name="businessOwner"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Dono de Negócio</FormLabel>
-                        <FormControl>
-                          <Input placeholder="E-mail ou nome" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="technicalOwner"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Dono Técnico</FormLabel>
-                        <FormControl>
-                          <Input placeholder="E-mail ou nome" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+          {/* STEP 2 — Job Description */}
+          {step === 1 && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="font-serif text-xl font-medium text-foreground">Job Description</h2>
+                <p className="text-sm text-muted-foreground">O que a agente faz — e o que não faz.</p>
+              </div>
+              <StepField label="Descrição" hint="O que a agente entrega no dia a dia.">
+                <Textarea
+                  value={data.bio}
+                  onChange={(e) => set("bio", e.target.value)}
+                  placeholder="Descreva a função principal da agente…"
+                  className="min-h-[100px]"
+                />
+              </StepField>
+              <StepField label="Deve fazer" hint="Uma responsabilidade por linha.">
+                <Textarea
+                  value={data.shouldDo}
+                  onChange={(e) => set("shouldDo", e.target.value)}
+                  placeholder={"Responder em até 2 minutos\nQualificar pelo orçamento\n…"}
+                  className="min-h-[100px]"
+                />
+              </StepField>
+              <StepField label="Não deve fazer" hint="Uma restrição por linha.">
+                <Textarea
+                  value={data.shouldNotDo}
+                  onChange={(e) => set("shouldNotDo", e.target.value)}
+                  placeholder={"Prometer descontos\nFalar de concorrentes\n…"}
+                  className="min-h-[100px]"
+                />
+              </StepField>
+            </div>
+          )}
 
-                <div className="flex justify-end pt-6">
-                  <Button type="submit" disabled={createAgent.isPending}>
-                    {createAgent.isPending ? "Admitindo..." : "Gerar Carteira de Trabalho"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </CardContent>
+          {/* STEP 3 — Responsabilidade */}
+          {step === 2 && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="font-serif text-xl font-medium text-foreground">Responsabilidade</h2>
+                <p className="text-sm text-muted-foreground">
+                  A cadeia de donos. Sem os três nomes, a agente não vai para produção.
+                </p>
+              </div>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <StepField label="Dono de negócio">
+                  <Input
+                    value={data.businessOwner}
+                    onChange={(e) => set("businessOwner", e.target.value)}
+                    placeholder="Responsável pelo resultado"
+                  />
+                </StepField>
+                <StepField label="Dono técnico">
+                  <Input
+                    value={data.technicalOwner}
+                    onChange={(e) => set("technicalOwner", e.target.value)}
+                    placeholder="Responsável pela operação"
+                  />
+                </StepField>
+                <StepField label="Sponsor de governança">
+                  <Input
+                    value={data.governanceSponsor}
+                    onChange={(e) => set("governanceSponsor", e.target.value)}
+                    placeholder="Patrocinador executivo"
+                  />
+                </StepField>
+                <StepField label="Aprovador de mudanças" hint="Opcional.">
+                  <Input
+                    value={data.changeApprover}
+                    onChange={(e) => set("changeApprover", e.target.value)}
+                    placeholder="Quem aprova alterações"
+                  />
+                </StepField>
+              </div>
+              {!ownersComplete && (
+                <Pill tone="ochre">Preencha os três donos para avançar</Pill>
+              )}
+            </div>
+          )}
+
+          {/* STEP 4 — Autonomia */}
+          {step === 3 && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="font-serif text-xl font-medium text-foreground">Autonomia</h2>
+                <p className="text-sm text-muted-foreground">
+                  Até onde a agente pode ir sozinha — e onde precisa de gente.
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {AUTONOMY_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => set("autonomyLevel", opt.value!)}
+                    className={cn(
+                      "rounded-xl border p-4 text-left transition-colors",
+                      data.autonomyLevel === opt.value
+                        ? "border-primary bg-primary/5"
+                        : "border-card-border hover:border-foreground/30",
+                    )}
+                  >
+                    <div className="text-sm font-medium text-foreground">{opt.label}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">{opt.desc}</div>
+                  </button>
+                ))}
+              </div>
+              <StepField label="Notas de autonomia" hint="Quando ela decide sozinha e quando escala.">
+                <Textarea
+                  value={data.autonomyNotes}
+                  onChange={(e) => set("autonomyNotes", e.target.value)}
+                  placeholder="Ex.: Decide sozinha até R$ 500; acima disso, escala ao dono de negócio."
+                  className="min-h-[90px]"
+                />
+              </StepField>
+              <StepField label="Limites rígidos" hint="Uma proibição por linha.">
+                <Textarea
+                  value={data.limits}
+                  onChange={(e) => set("limits", e.target.value)}
+                  placeholder={"Nunca alterar contratos\nNunca acessar dados financeiros\n…"}
+                  className="min-h-[90px]"
+                />
+              </StepField>
+            </div>
+          )}
+
+          {/* STEP 5 — Origem */}
+          {step === 4 && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="font-serif text-xl font-medium text-foreground">Origem</h2>
+                <p className="text-sm text-muted-foreground">
+                  O business case: por que esta agente existe e o que ela precisa provar.
+                </p>
+              </div>
+              <StepField label="Business case" hint="O problema que justifica a agente.">
+                <Textarea
+                  value={data.businessCaseDescription}
+                  onChange={(e) => set("businessCaseDescription", e.target.value)}
+                  placeholder="Ex.: Reduzir o tempo de primeira resposta e liberar o time comercial."
+                  className="min-h-[90px]"
+                />
+              </StepField>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <StepField label="Baseline atual" hint="O ponto de partida sem a agente.">
+                  <Input
+                    value={data.baseline}
+                    onChange={(e) => set("baseline", e.target.value)}
+                    placeholder="Ex.: 6h de tempo médio de resposta"
+                  />
+                </StepField>
+                <StepField label="Payback alvo" hint="Quando o investimento se paga.">
+                  <Input
+                    value={data.targetPayback}
+                    onChange={(e) => set("targetPayback", e.target.value)}
+                    placeholder="Ex.: 3 meses"
+                  />
+                </StepField>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 6 — Conectar */}
+          {step === 5 && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="font-serif text-xl font-medium text-foreground">Conectar</h2>
+                <p className="text-sm text-muted-foreground">
+                  De onde virão os sinais de desempenho da agente.
+                </p>
+              </div>
+              <StepField label="Fonte de dados" hint="Vincule um conector para alimentar as métricas.">
+                <Select
+                  value={data.dataSource || undefined}
+                  onValueChange={(v) => set("dataSource", v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um conector" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(connectors ?? []).map((c) => (
+                      <SelectItem key={c.id} value={c.name}>
+                        {c.name}
+                        {c.status === "connected" ? " · conectado" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </StepField>
+              <p className="text-xs text-muted-foreground">
+                Você pode gerenciar conectores depois em Conta · Conectores.
+              </p>
+            </div>
+          )}
+
+          {/* STEP 7 — Probation */}
+          {step === 6 && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="font-serif text-xl font-medium text-foreground">Probation</h2>
+                <p className="text-sm text-muted-foreground">
+                  A agente entra em período de observação antes de ser promovida.
+                </p>
+              </div>
+              <StepField label="Duração do probation (semanas)">
+                <Select value={data.probationWeeks} onValueChange={(v) => set("probationWeeks", v)}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {["2", "4", "6", "8"].map((w) => (
+                      <SelectItem key={w} value={w}>
+                        {w} semanas
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </StepField>
+
+              {/* Resumo */}
+              <div className="rounded-xl border border-card-border bg-secondary/30 p-4">
+                <Eyebrow>Resumo</Eyebrow>
+                <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Agente</dt>
+                    <dd className="font-medium text-foreground">
+                      {data.name || "—"} · {data.role || "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Plataforma</dt>
+                    <dd className="font-medium text-foreground">
+                      {PLATFORM_LABELS[data.platform] ?? data.platform}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Donos</dt>
+                    <dd className="font-medium text-foreground">
+                      {[data.businessOwner, data.technicalOwner, data.governanceSponsor]
+                        .filter(Boolean)
+                        .join(" · ") || "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Autonomia</dt>
+                    <dd className="font-medium text-foreground">
+                      {AUTONOMY_OPTIONS.find((o) => o.value === data.autonomyLevel)?.label}
+                    </dd>
+                  </div>
+                </dl>
+                {metrics && metrics.length > 0 && (
+                  <div className="mt-3">
+                    <dt className="text-xs text-muted-foreground">Métricas propostas</dt>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {LAYER_ORDER.filter((l) => metrics.some((m) => m.layer === l)).map((l) => (
+                        <Pill key={l} tone="blue">
+                          {LAYER_LABELS[l]}
+                        </Pill>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Nav */}
+          <div className="mt-6 flex items-center justify-between border-t border-card-border pt-5">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => (step === 0 ? setLocation("/agentes") : setStep((s) => s - 1))}
+            >
+              <ArrowLeft className="mr-1.5 h-4 w-4" />
+              {step === 0 ? "Cancelar" : "Voltar"}
+            </Button>
+            {step < STEPS.length - 1 ? (
+              <Button type="button" onClick={next} disabled={!canAdvance}>
+                Avançar <ArrowRight className="ml-1.5 h-4 w-4" />
+              </Button>
+            ) : (
+              <Button type="button" onClick={submit} disabled={createAgent.isPending}>
+                {createAgent.isPending ? "Admitindo…" : "Admitir na frota"}
+              </Button>
+            )}
+          </div>
         </Card>
       </div>
     </AppLayout>
