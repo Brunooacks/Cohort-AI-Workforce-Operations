@@ -310,6 +310,73 @@ function parseGitHubUrl(url: URL): GitHubRef | null {
   return { owner, repo, branch, subPath };
 }
 
+interface GitLabRef {
+  namespace: string; // group (possibly nested: group/subgroup)
+  repo: string;
+  branch?: string;
+  subPath?: string;
+}
+
+// GitLab paths look like /<group>[/<subgroup>...]/<repo> and browse URLs append
+// /-/tree/<branch>/<subpath> or /-/blob/<branch>/<file>. Everything before the
+// "/-/" sentinel is the project path; the last segment is the repo, the rest is
+// the (possibly nested) namespace.
+function parseGitLabUrl(url: URL): GitLabRef | null {
+  if (url.hostname !== "gitlab.com" && url.hostname !== "www.gitlab.com")
+    return null;
+  const path = url.pathname;
+  const dashIdx = path.indexOf("/-/");
+  const projectPath = dashIdx === -1 ? path : path.slice(0, dashIdx);
+  const segs = projectPath.split("/").filter(Boolean);
+  if (segs.length < 2) return null;
+  const repo = segs[segs.length - 1]!.replace(/\.git$/, "");
+  const namespace = segs.slice(0, -1).join("/");
+  let branch: string | undefined;
+  let subPath: string | undefined;
+  if (dashIdx !== -1) {
+    const rest = path
+      .slice(dashIdx + 3)
+      .split("/")
+      .filter(Boolean);
+    if ((rest[0] === "tree" || rest[0] === "blob") && rest.length >= 2) {
+      branch = rest[1];
+      if (rest.length > 2) subPath = rest.slice(2).join("/");
+    }
+  }
+  return { namespace, repo, branch, subPath };
+}
+
+interface BitbucketRef {
+  owner: string;
+  repo: string;
+  branch?: string;
+  subPath?: string;
+}
+
+// Bitbucket paths look like /<owner>/<repo> and browse URLs append
+// /src/<branch>/<subpath>.
+function parseBitbucketUrl(url: URL): BitbucketRef | null {
+  if (url.hostname !== "bitbucket.org" && url.hostname !== "www.bitbucket.org")
+    return null;
+  const parts = url.pathname.split("/").filter(Boolean);
+  if (parts.length < 2) return null;
+  const owner = parts[0]!;
+  const repo = parts[1]!.replace(/\.git$/, "");
+  let branch: string | undefined;
+  let subPath: string | undefined;
+  if (parts.length >= 4 && parts[2] === "src") {
+    branch = parts[3];
+    if (parts.length > 4) subPath = parts.slice(4).join("/");
+  }
+  return { owner, repo, branch, subPath };
+}
+
+// Refs tried (in order) when a host archive URL needs an explicit ref but the
+// user didn't specify a branch. GitHub's codeload accepts HEAD directly, but
+// GitLab/Bitbucket archive endpoints need a concrete ref, so we fall back
+// through the common default branch names.
+const DEFAULT_REF_CANDIDATES = ["HEAD", "main", "master"];
+
 interface TarEntry {
   path: string;
   content: Buffer;
@@ -351,10 +418,10 @@ function stripTopDir(path: string): string {
   return slash === -1 ? path : path.slice(slash + 1);
 }
 
-// Download the repo archive. When a GitHub credential is available (Replit
-// GitHub connector or GITHUB_TOKEN secret) we use the authenticated REST
-// tarball endpoint, which works for BOTH public and private repos. Without a
-// credential we fall back to the unauthenticated codeload path (public only)
+// Download the GitHub repo archive. When a GitHub credential is available
+// (Replit GitHub connector or GITHUB_TOKEN secret) we use the authenticated
+// REST tarball endpoint, which works for BOTH public and private repos. Without
+// a credential we fall back to the unauthenticated codeload path (public only)
 // and surface a clear "connect GitHub" hint on 404.
 async function downloadGitHubArchive(ref: GitHubRef): Promise<Response> {
   const token = await getGitHubAccessToken();
@@ -422,8 +489,25 @@ async function downloadGitHubArchive(ref: GitHubRef): Promise<Response> {
   return res;
 }
 
-async function fetchFromGitHub(ref: GitHubRef): Promise<FetchSourceResult> {
-  const res = await downloadGitHubArchive(ref);
+// Shared: turn a successful archive Response into a concatenated
+// FetchSourceResult — gunzip + tar parse, filter relevant files, and join them.
+// Used by every host importer once it has a usable archive Response.
+async function extractArchive(
+  res: Response,
+  subPath: string | undefined,
+): Promise<FetchSourceResult> {
+  // An HTML response (any status) means a login/landing/error page was served
+  // in place of an archive: GitLab/Bitbucket return one for a missing branch,
+  // a private repo, or temporary anti-abuse throttling (e.g. 200, 403, 406).
+  // Treat it as "not found or private" rather than a generic download failure.
+  const contentType = res.headers.get("content-type") ?? "";
+  if (contentType.includes("html")) {
+    await res.body?.cancel().catch(() => {});
+    throw new FetchSourceError(
+      "Repositório, branch ou caminho não encontrado (ou é privado).",
+      404,
+    );
+  }
   if (!res.ok) {
     await res.body?.cancel().catch(() => {});
     throw new FetchSourceError("Falha ao baixar o repositório.", 502);
@@ -441,7 +525,7 @@ async function fetchFromGitHub(ref: GitHubRef): Promise<FetchSourceResult> {
     );
   }
 
-  const prefix = ref.subPath ? ref.subPath.replace(/\/$/, "") + "/" : "";
+  const prefix = subPath ? subPath.replace(/\/$/, "") + "/" : "";
   const candidates = entries
     .map((e) => ({ ...e, path: stripTopDir(e.path) }))
     .filter((e) => (prefix ? e.path.startsWith(prefix) : true))
@@ -479,6 +563,78 @@ async function fetchFromGitHub(ref: GitHubRef): Promise<FetchSourceResult> {
   }
 
   return { content: chunks.join("\n\n"), sourceType: "git", files, truncated };
+}
+
+// Shared: download a gzipped tarball from one of the candidate archive URLs
+// (the first non-404 wins) and extract it. Used by the GitLab/Bitbucket
+// importers, which differ only in how they build the archive URL(s) and the
+// host label shown on a rate-limit error.
+async function fetchRepoArchive(
+  candidateUrls: string[],
+  subPath: string | undefined,
+  hostLabel: string,
+): Promise<FetchSourceResult> {
+  let res: Response | null = null;
+  for (const candidate of candidateUrls) {
+    const r = await safeFetch(new URL(candidate));
+    // 404 (missing repo/ref) or 401/403 (private repo — GitLab/Bitbucket
+    // redirect such archive requests to a login page that resolves to 403
+    // instead of a clean 404) → try the next candidate ref.
+    if (r.status === 404 || r.status === 401 || r.status === 403) {
+      await r.body?.cancel().catch(() => {});
+      continue;
+    }
+    res = r;
+    break;
+  }
+  if (!res) {
+    throw new FetchSourceError(
+      "Repositório, branch ou caminho não encontrado (ou é privado).",
+      404,
+    );
+  }
+  if (res.status === 429) {
+    await res.body?.cancel().catch(() => {});
+    throw new FetchSourceError(
+      `Limite de requisições do ${hostLabel} atingido. Tente novamente em alguns minutos.`,
+      429,
+    );
+  }
+  return extractArchive(res, subPath);
+}
+
+async function fetchFromGitHub(ref: GitHubRef): Promise<FetchSourceResult> {
+  const res = await downloadGitHubArchive(ref);
+  return extractArchive(res, ref.subPath);
+}
+
+// GitLab archive: /<namespace>/<repo>/-/archive/<ref>/<repo>-<ref>.tar.gz
+// (the trailing filename is only used for naming, but must end in .tar.gz). The
+// archive's top-level dir is "<repo>-<ref>/", stripped by stripTopDir.
+async function fetchFromGitLab(ref: GitLabRef): Promise<FetchSourceResult> {
+  const ns = ref.namespace.split("/").map(encodeURIComponent).join("/");
+  const repo = encodeURIComponent(ref.repo);
+  const refs = ref.branch ? [ref.branch] : DEFAULT_REF_CANDIDATES;
+  const urls = refs.map((r) => {
+    const enc = encodeURIComponent(r);
+    return `https://gitlab.com/${ns}/${repo}/-/archive/${enc}/${repo}-${enc}.tar.gz`;
+  });
+  return fetchRepoArchive(urls, ref.subPath, "GitLab");
+}
+
+// Bitbucket archive: /<owner>/<repo>/get/<ref>.tar.gz. The archive's top-level
+// dir is "<owner>-<repo>-<commit>/", stripped by stripTopDir.
+async function fetchFromBitbucket(
+  ref: BitbucketRef,
+): Promise<FetchSourceResult> {
+  const owner = encodeURIComponent(ref.owner);
+  const repo = encodeURIComponent(ref.repo);
+  const refs = ref.branch ? [ref.branch] : DEFAULT_REF_CANDIDATES;
+  const urls = refs.map(
+    (r) =>
+      `https://bitbucket.org/${owner}/${repo}/get/${encodeURIComponent(r)}.tar.gz`,
+  );
+  return fetchRepoArchive(urls, ref.subPath, "Bitbucket");
 }
 
 // --- Generic URL ------------------------------------------------------------
@@ -549,7 +705,11 @@ export async function fetchAgentSourceFromUrl(
   raw: string,
 ): Promise<FetchSourceResult> {
   const url = assertSafeUrl(raw);
-  const gitRef = parseGitHubUrl(url);
-  if (gitRef) return fetchFromGitHub(gitRef);
+  const gitHubRef = parseGitHubUrl(url);
+  if (gitHubRef) return fetchFromGitHub(gitHubRef);
+  const gitLabRef = parseGitLabUrl(url);
+  if (gitLabRef) return fetchFromGitLab(gitLabRef);
+  const bitbucketRef = parseBitbucketUrl(url);
+  if (bitbucketRef) return fetchFromBitbucket(bitbucketRef);
   return fetchFromUrl(url);
 }
