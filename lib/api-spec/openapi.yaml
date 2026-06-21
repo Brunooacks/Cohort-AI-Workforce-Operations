@@ -216,6 +216,30 @@ paths:
               schema:
                 $ref: "#/components/schemas/AgentDraft"
 
+  /discovery/fetch:
+    post:
+      operationId: fetchAgentSource
+      tags: [agents]
+      summary: Fetch agent source from a Git repository or web URL
+      description: >-
+        Fetches and concatenates the relevant source and skill files from a
+        public Git repository (e.g. GitHub) or a single web/raw URL, applying
+        size and file-type guardrails. The concatenated text can then be passed
+        to the analyze endpoint. Nothing is persisted.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FetchSourceInput"
+      responses:
+        "200":
+          description: Source fetched and concatenated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FetchSourceResult"
+
   /agents/{agentId}:
     get:
       operationId: getAgent
@@ -1243,6 +1267,46 @@ components:
           type: string
         nameHint:
           type: string
+
+    FetchSourceInput:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          minLength: 1
+
+    FetchedFile:
+      type: object
+      required:
+        - path
+        - bytes
+      properties:
+        path:
+          type: string
+        bytes:
+          type: integer
+
+    FetchSourceResult:
+      type: object
+      required:
+        - content
+        - sourceType
+        - files
+        - truncated
+      properties:
+        content:
+          type: string
+        sourceType:
+          type: string
+          enum: [git, url]
+        files:
+          type: array
+          items:
+            $ref: "#/components/schemas/FetchedFile"
+        truncated:
+          type: boolean
 
     AgentDraft:
       type: object

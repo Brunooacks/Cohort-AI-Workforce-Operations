@@ -342,6 +342,28 @@ export const AnalyzeAgentSourceResponse = zod.object({
 
 
 /**
+ * Fetches and concatenates the relevant source and skill files from a public Git repository (e.g. GitHub) or a single web/raw URL, applying size and file-type guardrails. The concatenated text can then be passed to the analyze endpoint. Nothing is persisted.
+ * @summary Fetch agent source from a Git repository or web URL
+ */
+
+
+
+export const FetchAgentSourceBody = zod.object({
+  "url": zod.string().min(1)
+})
+
+export const FetchAgentSourceResponse = zod.object({
+  "content": zod.string(),
+  "sourceType": zod.enum(['git', 'url']),
+  "files": zod.array(zod.object({
+  "path": zod.string(),
+  "bytes": zod.number()
+})),
+  "truncated": zod.boolean()
+})
+
+
+/**
  * @summary Get a single agent with full work record
  */
 export const GetAgentParams = zod.object({

@@ -30,6 +30,8 @@ import {
   DecideVerdictResponse,
   AnalyzeAgentSourceBody,
   AnalyzeAgentSourceResponse,
+  FetchAgentSourceBody,
+  FetchAgentSourceResponse,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
 import {
@@ -49,6 +51,7 @@ import {
   MAX_CONTENT_LENGTH,
   RateLimitError,
 } from "../lib/analyze";
+import { fetchAgentSourceFromUrl, FetchSourceError } from "../lib/fetch-source";
 
 const router: IRouter = Router();
 
@@ -239,6 +242,26 @@ router.post("/discovery/analyze", requireAuth, async (req, res) => {
     res
       .status(502)
       .json({ error: "Não foi possível analisar o material do agente." });
+  }
+});
+
+router.post("/discovery/fetch", requireAuth, async (req, res) => {
+  const body = FetchAgentSourceBody.parse(req.body);
+
+  try {
+    const result = await fetchAgentSourceFromUrl(body.url);
+    const data = FetchAgentSourceResponse.parse(result);
+    res.json(data);
+  } catch (err) {
+    if (err instanceof FetchSourceError) {
+      req.log.warn({ err: err.message }, "Source fetch rejected");
+      res.status(err.status).json({ error: err.message });
+      return;
+    }
+    req.log.error({ err }, "Failed to fetch agent source");
+    res
+      .status(502)
+      .json({ error: "Não foi possível importar o material do endereço." });
   }
 });
 

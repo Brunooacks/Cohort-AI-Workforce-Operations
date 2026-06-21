@@ -2,6 +2,7 @@ import { AppLayout } from "@/components/layout";
 import {
   useCreateAgent,
   useAnalyzeAgentSource,
+  useFetchAgentSource,
   type AgentDraft,
   type DraftMetricLayer,
 } from "@workspace/api-client-react";
@@ -56,8 +57,10 @@ export default function AdmissionPage() {
   const [, setLocation] = useLocation();
   const createAgent = useCreateAgent();
   const analyze = useAnalyzeAgentSource();
+  const fetchSource = useFetchAgentSource();
 
   const [source, setSource] = useState("");
+  const [importUrl, setImportUrl] = useState("");
   const [draft, setDraft] = useState<AgentDraft | null>(null);
   const [draftApplied, setDraftApplied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -173,6 +176,50 @@ export default function AdmissionPage() {
     );
   }
 
+  function onImportUrl() {
+    const url = importUrl.trim();
+    if (!url) {
+      toast({
+        variant: "destructive",
+        title: "Informe um endereço",
+        description: "Cole a URL de um repositório Git ou de um arquivo público.",
+      });
+      return;
+    }
+    fetchSource.mutate(
+      { data: { url } },
+      {
+        onSuccess: (res) => {
+          setSource((prev) =>
+            prev ? `${prev}\n\n${res.content}` : res.content,
+          );
+          setImportUrl("");
+          toast({
+            title: "Material importado",
+            description: `${res.files.length} arquivo(s) carregado(s)${
+              res.truncated ? " (conteúdo truncado pelo limite)" : ""
+            }. Revise e clique em Analisar com IA.`,
+          });
+        },
+        onError: (err) => {
+          const status = (err as { status?: number } | null)?.status;
+          toast({
+            variant: "destructive",
+            title: "Falha na importação",
+            description:
+              status === 429
+                ? "Limite de requisições atingido. Tente novamente em alguns minutos."
+                : status === 404
+                  ? "Repositório ou endereço não encontrado (ou é privado)."
+                  : status === 422
+                    ? "Nenhum conteúdo relevante encontrado no endereço."
+                    : "Não foi possível importar o material desse endereço.",
+          });
+        },
+      },
+    );
+  }
+
   async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -259,6 +306,37 @@ export default function AdmissionPage() {
               className="hidden"
               onChange={onUpload}
             />
+            <div className="space-y-1.5 rounded-md border border-card-border bg-muted/30 p-3">
+              <span className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
+                Importar de um repositório Git ou URL
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  value={importUrl}
+                  onChange={(e) => setImportUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (!fetchSource.isPending) onImportUrl();
+                    }
+                  }}
+                  placeholder="https://github.com/org/repo ou URL de um arquivo público"
+                  className="min-w-[16rem] flex-1 font-mono text-xs"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onImportUrl}
+                  disabled={fetchSource.isPending}
+                >
+                  {fetchSource.isPending ? "Importando..." : "Importar"}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Buscamos os arquivos de código e skills relevantes (limites de
+                tamanho e tipo aplicados) e os adicionamos ao campo acima.
+              </p>
+            </div>
             <p
               className={`text-right font-mono text-xs ${
                 overLimit ? "text-destructive" : "text-muted-foreground"

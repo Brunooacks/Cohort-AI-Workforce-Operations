@@ -33,6 +33,8 @@ import type {
   DiscoveryResult,
   Error,
   Evaluation,
+  FetchSourceInput,
+  FetchSourceResult,
   FleetBenchmarks,
   FleetDecision,
   FleetGovernance,
@@ -837,6 +839,78 @@ export const useAnalyzeAgentSource = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getAnalyzeAgentSourceMutationOptions(options));
+    }
+
+export const getFetchAgentSourceUrl = () => {
+
+
+
+
+  return `/api/discovery/fetch`
+}
+
+/**
+ * Fetches and concatenates the relevant source and skill files from a public Git repository (e.g. GitHub) or a single web/raw URL, applying size and file-type guardrails. The concatenated text can then be passed to the analyze endpoint. Nothing is persisted.
+ * @summary Fetch agent source from a Git repository or web URL
+ */
+export const fetchAgentSource = async (fetchSourceInput: FetchSourceInput, options?: RequestInit): Promise<FetchSourceResult> => {
+
+  return customFetch<FetchSourceResult>(getFetchAgentSourceUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      fetchSourceInput,)
+  }
+);}
+
+
+
+
+export const getFetchAgentSourceMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof fetchAgentSource>>, TError,{data: BodyType<FetchSourceInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof fetchAgentSource>>, TError,{data: BodyType<FetchSourceInput>}, TContext> => {
+
+const mutationKey = ['fetchAgentSource'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof fetchAgentSource>>, {data: BodyType<FetchSourceInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  fetchAgentSource(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type FetchAgentSourceMutationResult = NonNullable<Awaited<ReturnType<typeof fetchAgentSource>>>
+    export type FetchAgentSourceMutationBody = BodyType<FetchSourceInput>
+    export type FetchAgentSourceMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Fetch agent source from a Git repository or web URL
+ */
+export const useFetchAgentSource = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof fetchAgentSource>>, TError,{data: BodyType<FetchSourceInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof fetchAgentSource>>,
+        TError,
+        {data: BodyType<FetchSourceInput>},
+        TContext
+      > => {
+      return useMutation(getFetchAgentSourceMutationOptions(options));
     }
 
 export const getGetAgentUrl = (agentId: string,) => {

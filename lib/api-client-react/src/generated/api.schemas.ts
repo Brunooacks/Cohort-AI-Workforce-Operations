@@ -528,6 +528,31 @@ export interface AnalyzeSourceInput {
   nameHint?: string;
 }
 
+export interface FetchSourceInput {
+  /** @minLength 1 */
+  url: string;
+}
+
+export interface FetchedFile {
+  path: string;
+  bytes: number;
+}
+
+export type FetchSourceResultSourceType = typeof FetchSourceResultSourceType[keyof typeof FetchSourceResultSourceType];
+
+
+export const FetchSourceResultSourceType = {
+  git: 'git',
+  url: 'url',
+} as const;
+
+export interface FetchSourceResult {
+  content: string;
+  sourceType: FetchSourceResultSourceType;
+  files: FetchedFile[];
+  truncated: boolean;
+}
+
 export type AgentDraftAutonomyLevel = typeof AgentDraftAutonomyLevel[keyof typeof AgentDraftAutonomyLevel];
 
 
