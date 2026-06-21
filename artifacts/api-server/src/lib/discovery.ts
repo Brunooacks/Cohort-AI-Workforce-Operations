@@ -354,6 +354,46 @@ function severityFromScore(score: number): Severity {
   return "stable";
 }
 
+/**
+ * Determines whether a metric value meets its stored goal. Mirrors the client
+ * `metricTargetStatus` (carteira.tsx) so the deterministic score and the UI
+ * agree on what counts as on/off-target. The per-metric `target` string is the
+ * source of truth. Returns `null` when the target is missing or not comparable
+ * (e.g. `—`, `baseline ±20%`, or text without a number).
+ */
+export function metricTargetStatus(
+  value: number,
+  target: string | undefined,
+): "on" | "off" | null {
+  if (!target) return null;
+  const t = target.trim();
+  if (!t || t === "—" || t === "-") return null;
+  // References to a baseline we don't have are not comparable.
+  if (/baseline/i.test(t) || /±/.test(t)) return null;
+
+  // Normalize pt-BR decimals (comma → dot) for numeric parsing.
+  const norm = t.replace(/,/g, ".");
+
+  // Range like "R$ 0.10–0.40" (en/em dash between two numbers).
+  const range = norm.match(/(\d+(?:\.\d+)?)\s*[–—]\s*(\d+(?:\.\d+)?)/);
+  if (range) {
+    const lo = parseFloat(range[1]!);
+    const hi = parseFloat(range[2]!);
+    return value >= lo && value <= hi ? "on" : "off";
+  }
+
+  const numMatch = norm.match(/-?\d+(?:\.\d+)?/);
+  if (!numMatch) return null;
+  const num = parseFloat(numMatch[0]);
+
+  // "lower is better" operators.
+  if (/≤|<=|</.test(t)) return value <= num ? "on" : "off";
+  // "higher is better" operators.
+  if (/≥|>=|>/.test(t)) return value >= num ? "on" : "off";
+  // No operator (e.g. "0" violations) → treat as an upper bound.
+  return value <= num ? "on" : "off";
+}
+
 // Generate a plausible deterministic value for a given unit.
 export function valueForUnit(rand: () => number, unit: string): number {
   switch (unit) {
@@ -467,12 +507,32 @@ export function scoreEvaluation(
   const rand = seededRandom(externalId + ":score");
   const layers: KpiLayer[] = LAYER_ORDER.map((key) => {
     const layerMetrics = metrics.filter((m) => m.layer === key);
+    // Seeded base keeps per-layer texture; consumed every layer so the rest of
+    // the RNG sequence (trends/directions below) stays stable.
     const baseScore = Math.round(42 + rand() * 53);
+
+    // Goal attainment: share of comparable metrics that meet their target.
+    const statuses = layerMetrics.map((m) =>
+      metricTargetStatus(m.value, m.target),
+    );
+    const comparable = statuses.filter((s) => s !== null);
+    const onCount = comparable.filter((s) => s === "on").length;
+
+    let score = baseScore;
+    if (comparable.length > 0) {
+      const attainment = onCount / comparable.length; // 0..1
+      // Map attainment to a 40..95 band, then blend with the seeded base so the
+      // score is anchored on goals met but still varies deterministically.
+      const attainmentScore = 40 + attainment * 55;
+      score = Math.round(attainmentScore * 0.6 + baseScore * 0.4);
+    }
+    score = Math.max(0, Math.min(100, score));
+
     return {
       key,
       label: LAYER_LABELS[key],
-      score: baseScore,
-      severity: severityFromScore(baseScore),
+      score,
+      severity: severityFromScore(score),
       metrics: layerMetrics.map((m) => ({
         label: m.label,
         value: m.value,
