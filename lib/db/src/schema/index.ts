@@ -36,6 +36,8 @@ export interface KpiMetric {
   unit: string;
   trend: number;
   direction?: "up" | "down" | "flat";
+  target?: string;
+  rationale?: string;
 }
 
 export interface KpiLayer {

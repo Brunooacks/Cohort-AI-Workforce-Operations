@@ -13,4 +13,6 @@ export interface KpiMetric {
   unit: string;
   trend: number;
   direction?: KpiMetricDirection;
+  target?: string;
+  rationale?: string;
 }

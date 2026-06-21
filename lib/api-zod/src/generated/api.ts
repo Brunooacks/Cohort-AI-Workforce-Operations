@@ -251,7 +251,9 @@ export const ListAgentsResponseItem = zod.object({
   "value": zod.number(),
   "unit": zod.string(),
   "trend": zod.number(),
-  "direction": zod.enum(['up', 'down', 'flat']).optional()
+  "direction": zod.enum(['up', 'down', 'flat']).optional(),
+  "target": zod.string().optional(),
+  "rationale": zod.string().optional()
 })).optional(),
   "currentVerdict": zod.enum(['promote', 'mentor', 'retire', 'observation']),
   "verdictConfidence": zod.number(),
@@ -388,7 +390,9 @@ export const GetAgentResponse = zod.object({
   "value": zod.number(),
   "unit": zod.string(),
   "trend": zod.number(),
-  "direction": zod.enum(['up', 'down', 'flat']).optional()
+  "direction": zod.enum(['up', 'down', 'flat']).optional(),
+  "target": zod.string().optional(),
+  "rationale": zod.string().optional()
 })).optional(),
   "currentVerdict": zod.enum(['promote', 'mentor', 'retire', 'observation']),
   "verdictConfidence": zod.number(),
@@ -435,7 +439,9 @@ export const GetAgentResponse = zod.object({
   "value": zod.number(),
   "unit": zod.string(),
   "trend": zod.number(),
-  "direction": zod.enum(['up', 'down', 'flat']).optional()
+  "direction": zod.enum(['up', 'down', 'flat']).optional(),
+  "target": zod.string().optional(),
+  "rationale": zod.string().optional()
 }))
 })),
   "verdict": zod.enum(['promote', 'mentor', 'retire', 'observation']),
@@ -496,7 +502,9 @@ export const UpdateAgentResponse = zod.object({
   "value": zod.number(),
   "unit": zod.string(),
   "trend": zod.number(),
-  "direction": zod.enum(['up', 'down', 'flat']).optional()
+  "direction": zod.enum(['up', 'down', 'flat']).optional(),
+  "target": zod.string().optional(),
+  "rationale": zod.string().optional()
 })).optional(),
   "currentVerdict": zod.enum(['promote', 'mentor', 'retire', 'observation']),
   "verdictConfidence": zod.number(),
@@ -543,7 +551,9 @@ export const UpdateAgentResponse = zod.object({
   "value": zod.number(),
   "unit": zod.string(),
   "trend": zod.number(),
-  "direction": zod.enum(['up', 'down', 'flat']).optional()
+  "direction": zod.enum(['up', 'down', 'flat']).optional(),
+  "target": zod.string().optional(),
+  "rationale": zod.string().optional()
 }))
 })),
   "verdict": zod.enum(['promote', 'mentor', 'retire', 'observation']),
@@ -616,7 +626,9 @@ export const UpdateAgentIdentityResponse = zod.object({
   "value": zod.number(),
   "unit": zod.string(),
   "trend": zod.number(),
-  "direction": zod.enum(['up', 'down', 'flat']).optional()
+  "direction": zod.enum(['up', 'down', 'flat']).optional(),
+  "target": zod.string().optional(),
+  "rationale": zod.string().optional()
 })).optional(),
   "currentVerdict": zod.enum(['promote', 'mentor', 'retire', 'observation']),
   "verdictConfidence": zod.number(),
@@ -663,7 +675,9 @@ export const UpdateAgentIdentityResponse = zod.object({
   "value": zod.number(),
   "unit": zod.string(),
   "trend": zod.number(),
-  "direction": zod.enum(['up', 'down', 'flat']).optional()
+  "direction": zod.enum(['up', 'down', 'flat']).optional(),
+  "target": zod.string().optional(),
+  "rationale": zod.string().optional()
 }))
 })),
   "verdict": zod.enum(['promote', 'mentor', 'retire', 'observation']),
@@ -713,7 +727,9 @@ export const ListAgentEvaluationsResponseItem = zod.object({
   "value": zod.number(),
   "unit": zod.string(),
   "trend": zod.number(),
-  "direction": zod.enum(['up', 'down', 'flat']).optional()
+  "direction": zod.enum(['up', 'down', 'flat']).optional(),
+  "target": zod.string().optional(),
+  "rationale": zod.string().optional()
 }))
 })),
   "verdict": zod.enum(['promote', 'mentor', 'retire', 'observation']),

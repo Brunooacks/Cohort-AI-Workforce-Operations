@@ -12,6 +12,8 @@ export interface ProposedMetric {
   value: number;
   unit: string;
   confidence: number;
+  target?: string;
+  rationale?: string;
 }
 
 export interface DiscoveredAgentSeed {
@@ -132,74 +134,182 @@ export const PLATFORM_CATALOG: PlatformConnector[] = [
 
 const SIGNAL_MAP: Record<
   string,
-  { layer: LayerKey; label: string; unit: string }
+  { layer: LayerKey; label: string; unit: string; target: string }
 > = {
-  resolution_rate: { layer: "efficacy", label: "Taxa de resolução", unit: "%" },
+  resolution_rate: {
+    layer: "efficacy",
+    label: "Taxa de resolução",
+    unit: "%",
+    target: "≥ 85%",
+  },
   routing_accuracy: {
     layer: "efficacy",
     label: "Acurácia de roteamento",
     unit: "%",
+    target: "≥ 90%",
   },
-  win_rate_uplift: { layer: "efficacy", label: "Ganho de win rate", unit: "%" },
-  renewal_uplift: { layer: "efficacy", label: "Ganho de renovação", unit: "%" },
-  lead_conversion: { layer: "efficacy", label: "Conversão de leads", unit: "%" },
-  review_coverage: { layer: "efficacy", label: "Cobertura de revisão", unit: "%" },
-  defects_caught: { layer: "efficacy", label: "Defeitos capturados", unit: "%" },
+  win_rate_uplift: {
+    layer: "efficacy",
+    label: "Ganho de win rate",
+    unit: "%",
+    target: "≥ +5pp",
+  },
+  renewal_uplift: {
+    layer: "efficacy",
+    label: "Ganho de renovação",
+    unit: "%",
+    target: "≥ +5pp",
+  },
+  lead_conversion: {
+    layer: "efficacy",
+    label: "Conversão de leads",
+    unit: "%",
+    target: "≥ 25%",
+  },
+  review_coverage: {
+    layer: "efficacy",
+    label: "Cobertura de revisão",
+    unit: "%",
+    target: "≥ 90%",
+  },
+  defects_caught: {
+    layer: "efficacy",
+    label: "Defeitos capturados",
+    unit: "%",
+    target: "≥ 80%",
+  },
 
-  handle_time: { layer: "efficiency", label: "Tempo de atendimento", unit: "s" },
+  handle_time: {
+    layer: "efficiency",
+    label: "Tempo de atendimento",
+    unit: "s",
+    target: "< 180 s",
+  },
   first_response_time: {
     layer: "efficiency",
     label: "Tempo de 1ª resposta",
     unit: "s",
+    target: "< 60 s",
   },
   tokens_per_task: {
     layer: "efficiency",
     label: "Tokens por tarefa",
     unit: "tok",
+    target: "baseline ±20%",
   },
-  speed_to_lead: { layer: "efficiency", label: "Velocidade ao lead", unit: "min" },
-  ci_time_saved: { layer: "efficiency", label: "Tempo de CI poupado", unit: "%" },
-  cost_per_run: { layer: "efficiency", label: "Custo por execução", unit: "R$" },
+  speed_to_lead: {
+    layer: "efficiency",
+    label: "Velocidade ao lead",
+    unit: "min",
+    target: "< 5 min",
+  },
+  ci_time_saved: {
+    layer: "efficiency",
+    label: "Tempo de CI poupado",
+    unit: "%",
+    target: "≥ 20%",
+  },
+  cost_per_run: {
+    layer: "efficiency",
+    label: "Custo por execução",
+    unit: "R$",
+    target: "R$ 0,10–0,40",
+  },
 
-  adoption_rate: { layer: "adoption", label: "Taxa de adoção", unit: "%" },
-  deflection_rate: { layer: "adoption", label: "Taxa de deflexão", unit: "%" },
-  rep_adoption: { layer: "adoption", label: "Adoção pelo time", unit: "%" },
-  dev_acceptance: { layer: "adoption", label: "Aceite por devs", unit: "%" },
-  seat_usage: { layer: "adoption", label: "Uso de licenças", unit: "%" },
-  ticket_volume: { layer: "adoption", label: "Volume tratado", unit: "/dia" },
+  adoption_rate: {
+    layer: "adoption",
+    label: "Taxa de adoção",
+    unit: "%",
+    target: "≥ 70%",
+  },
+  deflection_rate: {
+    layer: "adoption",
+    label: "Taxa de deflexão",
+    unit: "%",
+    target: "≥ 60%",
+  },
+  rep_adoption: {
+    layer: "adoption",
+    label: "Adoção pelo time",
+    unit: "%",
+    target: "≥ 70%",
+  },
+  dev_acceptance: {
+    layer: "adoption",
+    label: "Aceite por devs",
+    unit: "%",
+    target: "≥ 70%",
+  },
+  seat_usage: {
+    layer: "adoption",
+    label: "Uso de licenças",
+    unit: "%",
+    target: "≥ 80%",
+  },
+  ticket_volume: {
+    layer: "adoption",
+    label: "Volume tratado",
+    unit: "/dia",
+    target: "↑ ≥ 5% m/m",
+  },
   pipeline_touched: {
     layer: "adoption",
     label: "Pipeline tocado",
     unit: "neg.",
+    target: "—",
   },
 
   policy_violations: {
     layer: "governance",
     label: "Violações de política",
     unit: "%",
+    target: "0",
   },
   hallucination_flags: {
     layer: "governance",
     label: "Sinais de alucinação",
     unit: "%",
+    target: "≤ 2%",
   },
-  escalation_rate: { layer: "governance", label: "Taxa de escalonamento", unit: "%" },
+  escalation_rate: {
+    layer: "governance",
+    label: "Taxa de escalonamento",
+    unit: "%",
+    target: "≥ 80% apropr.",
+  },
   compliance_checks: {
     layer: "governance",
     label: "Checagens de conformidade",
     unit: "%",
+    target: "≥ 99%",
   },
-  audit_coverage: { layer: "governance", label: "Cobertura de auditoria", unit: "%" },
+  audit_coverage: {
+    layer: "governance",
+    label: "Cobertura de auditoria",
+    unit: "%",
+    target: "≥ 99%",
+  },
   false_positive_rate: {
     layer: "governance",
     label: "Falsos positivos",
     unit: "%",
+    target: "≤ 5%",
   },
-  false_alarm_rate: { layer: "governance", label: "Falsos alarmes", unit: "%" },
+  false_alarm_rate: {
+    layer: "governance",
+    label: "Falsos alarmes",
+    unit: "%",
+    target: "≤ 5%",
+  },
 
-  csat: { layer: "value", label: "CSAT", unit: "/5" },
-  value_generated: { layer: "value", label: "Valor gerado", unit: "R$ mil" },
-  win_rate: { layer: "value", label: "Win rate", unit: "%" },
+  csat: { layer: "value", label: "CSAT", unit: "/5", target: "≥ 4,2/5" },
+  value_generated: {
+    layer: "value",
+    label: "Valor gerado",
+    unit: "R$ mil",
+    target: "—",
+  },
+  win_rate: { layer: "value", label: "Win rate", unit: "%", target: "—" },
 };
 
 const LAYER_LABELS: Record<LayerKey, string> = {
@@ -286,6 +396,7 @@ export function buildProposedMetrics(
         value: valueForUnit(rand, meta.unit),
         unit: meta.unit,
         confidence: Math.round((70 + rand() * 28) * 10) / 10,
+        target: meta.target,
       };
     });
 }
@@ -294,6 +405,8 @@ export interface DraftMetricInput {
   layer: LayerKey;
   label: string;
   unit: string;
+  target?: string;
+  rationale?: string;
 }
 
 // Sensible per-layer fallback so every evaluation/draft covers the 5 layers
@@ -323,7 +436,7 @@ export function proposedMetricsFromDraft(
   for (const layer of LAYER_ORDER) {
     if (!present.has(layer)) {
       const def = DEFAULT_LAYER_METRIC[layer];
-      filled.push({ layer, label: def.label, unit: def.unit });
+      filled.push({ layer, label: def.label, unit: def.unit, target: def.target });
     }
   }
   return filled.map((d) => ({
@@ -333,6 +446,8 @@ export function proposedMetricsFromDraft(
     value: valueForUnit(rand, d.unit),
     unit: d.unit,
     confidence: Math.round((70 + rand() * 28) * 10) / 10,
+    target: d.target,
+    rationale: d.rationale,
   }));
 }
 
@@ -364,6 +479,8 @@ export function scoreEvaluation(
         unit: m.unit,
         trend: Math.round((rand() * 30 - 12) * 10) / 10,
         direction: rand() > 0.55 ? "up" : rand() > 0.3 ? "down" : "flat",
+        ...(m.target ? { target: m.target } : {}),
+        ...(m.rationale ? { rationale: m.rationale } : {}),
       })),
     };
   });

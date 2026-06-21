@@ -908,6 +908,10 @@ components:
         direction:
           type: string
           enum: [up, down, flat]
+        target:
+          type: string
+        rationale:
+          type: string
 
     KpiLayer:
       type: object

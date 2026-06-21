@@ -312,6 +312,8 @@ export function MetricRow({
   unit,
   trend,
   direction,
+  target: targetProp,
+  rationale,
   targetLabel,
 }: {
   label: string;
@@ -319,9 +321,11 @@ export function MetricRow({
   unit: string;
   trend: number;
   direction?: "up" | "down" | "flat";
+  target?: string;
+  rationale?: string;
   targetLabel: string;
 }) {
-  const target = METRIC_TARGETS[label];
+  const target = targetProp ?? METRIC_TARGETS[label];
   const TrendIcon =
     direction === "up" ? ArrowUpRight : direction === "down" ? ArrowDownRight : Minus;
   const trendTone =
@@ -334,7 +338,12 @@ export function MetricRow({
   return (
     <div className="flex items-start justify-between gap-2 border-b border-card-border/60 py-2 last:border-0">
       <div className="min-w-0">
-        <div className="text-[13px] leading-tight text-foreground/90">{label}</div>
+        <div
+          className="text-[13px] leading-tight text-foreground/90"
+          title={rationale}
+        >
+          {label}
+        </div>
         {target && (
           <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">
             {targetLabel}: {target}

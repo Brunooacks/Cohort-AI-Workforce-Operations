@@ -6,18 +6,22 @@ description: Why AI-draft metric target/rationale are proposal-only and how 5-la
 # Discovery draft metrics vs evaluation shape
 
 The Admissão discovery flow produces `AgentDraft.proposedMetrics` with
-`layer/label/unit/target/rationale`. These feed admission seeding, but the
-seeded evaluation uses only `layer/label/unit` (+ a deterministic value).
+`layer/label/unit/target/rationale`. These now flow through admission seeding
+onto the stored evaluation.
 
-**Why:** `KpiMetric` (the evaluation metric shape in the DB layer) has no
-`target`/`rationale` fields — only `label/value/unit/trend/direction`. So a
-draft metric's `target`/`rationale` are proposal metadata for the human
-reviewer, not stored on the evaluation. Persisting them would require a schema
-change and was intentionally left out of scope.
+**Goal-vs-actual is persisted:** `KpiMetric` carries optional `target` and
+`rationale`. The draft's target/rationale are carried through
+`proposedMetricsFromDraft` → `scoreEvaluation`; catalog/manual-default seeds get
+targets from `SIGNAL_MAP[*].target` and `DEFAULT_LAYER_METRIC[*].target`. The
+agent-detail `MetricRow` shows `target` as the goal (falling back to the static
+`METRIC_TARGETS` label map for pre-existing rows) and `rationale` as a tooltip.
 
-**How to apply:** If a future task needs goal-vs-actual on the evaluation,
-extend `KpiMetric` (and the proposed-metric seeding) rather than assuming the
-target already flows through.
+**Why:** `KpiMetric` is a jsonb interface field, so adding `target`/`rationale`
+needs no DB migration — only the OpenAPI `KpiMetric` schema + codegen.
+
+**How to apply:** Targets only persist for agents seeded/admitted AFTER this
+change. The deterministic seed regenerates identical agents, so truncating
+`agents` and restarting the API re-seeds the demo fleet with targets.
 
 ## 5-layer coverage guarantee
 Every draft and every admission-seeded evaluation must cover all 5 layers
