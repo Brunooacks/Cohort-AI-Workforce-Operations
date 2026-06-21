@@ -415,7 +415,13 @@ export default function AgentDetailPage() {
                     </div>
                     <div>
                       {layer.metrics.map((m, idx) => (
-                        <MetricRow key={idx} {...m} targetLabel={t.target} />
+                        <MetricRow
+                          key={idx}
+                          {...m}
+                          targetLabel={t.target}
+                          onTargetLabel={t.onTarget}
+                          offTargetLabel={t.offTarget}
+                        />
                       ))}
                     </div>
                   </div>
