@@ -243,6 +243,24 @@ paths:
               schema:
                 $ref: "#/components/schemas/FetchSourceResult"
 
+  /discovery/github-status:
+    get:
+      operationId: getGitHubStatus
+      tags: [agents]
+      summary: Report whether a GitHub credential is available for private imports
+      description: >-
+        Read-only check that reports whether a GitHub credential is currently
+        resolvable (via the Replit GitHub connector or a GITHUB_TOKEN secret),
+        without ever exposing the token. Used by the import screen to show the
+        connection status before attempting a private-repo import.
+      responses:
+        "200":
+          description: GitHub connection status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubStatus"
+
   /agents/{agentId}:
     get:
       operationId: getAgent
@@ -1274,6 +1292,18 @@ components:
           type: string
         nameHint:
           type: string
+
+    GitHubStatus:
+      type: object
+      required:
+        - connected
+        - source
+      properties:
+        connected:
+          type: boolean
+        source:
+          type: string
+          enum: [connector, token, none]
 
     FetchSourceInput:
       type: object

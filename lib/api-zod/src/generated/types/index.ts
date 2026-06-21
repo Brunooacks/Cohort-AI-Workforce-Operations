@@ -59,6 +59,8 @@ export * from './fleetLayerScoreSeverity';
 export * from './fleetRoi';
 export * from './fleetSummary';
 export * from './fleetTrendPoint';
+export * from './gitHubStatus';
+export * from './gitHubStatusSource';
 export * from './governanceAgentRef';
 export * from './governanceAgentRefStatus';
 export * from './governanceSummary';

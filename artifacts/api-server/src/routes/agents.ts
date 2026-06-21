@@ -32,6 +32,7 @@ import {
   AnalyzeAgentSourceResponse,
   FetchAgentSourceBody,
   FetchAgentSourceResponse,
+  GetGitHubStatusResponse,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
 import {
@@ -52,6 +53,7 @@ import {
   RateLimitError,
 } from "../lib/analyze";
 import { fetchAgentSourceFromUrl, FetchSourceError } from "../lib/fetch-source";
+import { getGitHubStatus } from "../lib/github-auth";
 
 const router: IRouter = Router();
 
@@ -263,6 +265,12 @@ router.post("/discovery/fetch", requireAuth, async (req, res) => {
       .status(502)
       .json({ error: "Não foi possível importar o material do endereço." });
   }
+});
+
+router.get("/discovery/github-status", requireAuth, async (_req, res) => {
+  const status = await getGitHubStatus();
+  const data = GetGitHubStatusResponse.parse(status);
+  res.json(data);
 });
 
 router.get("/agents/:agentId", requireAuth, async (req, res) => {

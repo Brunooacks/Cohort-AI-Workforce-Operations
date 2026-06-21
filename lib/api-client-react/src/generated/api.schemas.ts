@@ -530,6 +530,20 @@ export interface AnalyzeSourceInput {
   nameHint?: string;
 }
 
+export type GitHubStatusSource = typeof GitHubStatusSource[keyof typeof GitHubStatusSource];
+
+
+export const GitHubStatusSource = {
+  connector: 'connector',
+  token: 'token',
+  none: 'none',
+} as const;
+
+export interface GitHubStatus {
+  connected: boolean;
+  source: GitHubStatusSource;
+}
+
 export interface FetchSourceInput {
   /** @minLength 1 */
   url: string;

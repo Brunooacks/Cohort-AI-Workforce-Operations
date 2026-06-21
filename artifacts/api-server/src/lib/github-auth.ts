@@ -67,3 +67,18 @@ export async function getGitHubAccessToken(): Promise<string | null> {
   if (fromConnector) return fromConnector;
   return envToken();
 }
+
+export type GitHubCredentialSource = "connector" | "token" | "none";
+
+// Reports whether a GitHub credential is currently resolvable, and from where,
+// without ever exposing the token itself. Used by the import screen to surface
+// connection status before a private-repo import.
+export async function getGitHubStatus(): Promise<{
+  connected: boolean;
+  source: GitHubCredentialSource;
+}> {
+  const fromConnector = await connectorToken();
+  if (fromConnector) return { connected: true, source: "connector" };
+  if (envToken()) return { connected: true, source: "token" };
+  return { connected: false, source: "none" };
+}

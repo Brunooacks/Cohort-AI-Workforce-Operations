@@ -344,7 +344,7 @@ export const AnalyzeAgentSourceResponse = zod.object({
 
 
 /**
- * Fetches and concatenates the relevant source and skill files from a public Git repository (e.g. GitHub) or a single web/raw URL, applying size and file-type guardrails. The concatenated text can then be passed to the analyze endpoint. Nothing is persisted.
+ * Fetches and concatenates the relevant source and skill files from a Git repository (e.g. GitHub) or a single web/raw URL, applying size and file-type guardrails. Private GitHub repositories are supported when a GitHub credential is available via the Replit GitHub connector (or a GITHUB_TOKEN secret); otherwise only public repos are accessible. The concatenated text can then be passed to the analyze endpoint. Nothing is persisted.
  * @summary Fetch agent source from a Git repository or web URL
  */
 
@@ -362,6 +362,16 @@ export const FetchAgentSourceResponse = zod.object({
   "bytes": zod.number()
 })),
   "truncated": zod.boolean()
+})
+
+
+/**
+ * Read-only check that reports whether a GitHub credential is currently resolvable (via the Replit GitHub connector or a GITHUB_TOKEN secret), without ever exposing the token. Used by the import screen to show the connection status before attempting a private-repo import.
+ * @summary Report whether a GitHub credential is available for private imports
+ */
+export const GetGitHubStatusResponse = zod.object({
+  "connected": zod.boolean(),
+  "source": zod.enum(['connector', 'token', 'none'])
 })
 
 

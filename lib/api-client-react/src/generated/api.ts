@@ -40,6 +40,7 @@ import type {
   FleetGovernance,
   FleetKpis,
   FleetSummary,
+  GitHubStatus,
   HealthStatus,
   IdentityUpdate,
   ListAgentsParams,
@@ -850,7 +851,7 @@ export const getFetchAgentSourceUrl = () => {
 }
 
 /**
- * Fetches and concatenates the relevant source and skill files from a public Git repository (e.g. GitHub) or a single web/raw URL, applying size and file-type guardrails. The concatenated text can then be passed to the analyze endpoint. Nothing is persisted.
+ * Fetches and concatenates the relevant source and skill files from a Git repository (e.g. GitHub) or a single web/raw URL, applying size and file-type guardrails. Private GitHub repositories are supported when a GitHub credential is available via the Replit GitHub connector (or a GITHUB_TOKEN secret); otherwise only public repos are accessible. The concatenated text can then be passed to the analyze endpoint. Nothing is persisted.
  * @summary Fetch agent source from a Git repository or web URL
  */
 export const fetchAgentSource = async (fetchSourceInput: FetchSourceInput, options?: RequestInit): Promise<FetchSourceResult> => {
@@ -912,6 +913,84 @@ export const useFetchAgentSource = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getFetchAgentSourceMutationOptions(options));
     }
+
+export const getGetGitHubStatusUrl = () => {
+
+
+
+
+  return `/api/discovery/github-status`
+}
+
+/**
+ * Read-only check that reports whether a GitHub credential is currently resolvable (via the Replit GitHub connector or a GITHUB_TOKEN secret), without ever exposing the token. Used by the import screen to show the connection status before attempting a private-repo import.
+ * @summary Report whether a GitHub credential is available for private imports
+ */
+export const getGitHubStatus = async ( options?: RequestInit): Promise<GitHubStatus> => {
+
+  return customFetch<GitHubStatus>(getGetGitHubStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGitHubStatusQueryKey = () => {
+    return [
+    `/api/discovery/github-status`
+    ] as const;
+    }
+
+
+export const getGetGitHubStatusQueryOptions = <TData = Awaited<ReturnType<typeof getGitHubStatus>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGitHubStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGitHubStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGitHubStatus>>> = ({ signal }) => getGitHubStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGitHubStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGitHubStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getGitHubStatus>>>
+export type GetGitHubStatusQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Report whether a GitHub credential is available for private imports
+ */
+
+export function useGetGitHubStatus<TData = Awaited<ReturnType<typeof getGitHubStatus>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGitHubStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGitHubStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getGetAgentUrl = (agentId: string,) => {
 

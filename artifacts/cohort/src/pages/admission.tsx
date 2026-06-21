@@ -7,6 +7,7 @@ import {
   useAnalyzeAgentSource,
   useFetchAgentSource,
   useListConnectors,
+  useGetGitHubStatus,
   type AgentDraft,
   type AgentInput,
   type DraftMetric,
@@ -203,6 +204,8 @@ export default function AdmissionPage() {
   const analyze = useAnalyzeAgentSource();
   const fetchSource = useFetchAgentSource();
   const { data: connectors } = useListConnectors();
+  const { data: githubStatus, isLoading: githubStatusLoading } =
+    useGetGitHubStatus();
 
   const [step, setStep] = useState(0);
   const [data, setData] = useState<WizardData>(INITIAL);
@@ -576,9 +579,26 @@ export default function AdmissionPage() {
                       onChange={onUpload}
                     />
                     <div className="space-y-1.5 rounded-md border border-card-border bg-muted/30 p-3">
-                      <span className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
-                        Importar de um repositório Git ou URL
-                      </span>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
+                          Importar de um repositório Git ou URL
+                        </span>
+                        {githubStatusLoading ? (
+                          <Pill tone="blue">GitHub: verificando…</Pill>
+                        ) : githubStatus?.connected ? (
+                          <Pill tone="sage">GitHub conectado</Pill>
+                        ) : (
+                          <Pill tone="ochre">GitHub não conectado</Pill>
+                        )}
+                      </div>
+                      {!githubStatusLoading && !githubStatus?.connected && (
+                        <p className="text-xs text-muted-foreground">
+                          Repositórios públicos funcionam sem conexão. Para importar um
+                          repositório <strong>privado</strong>, conecte sua conta GitHub nas
+                          integrações do Replit (painel de integrações) e recarregue esta
+                          página.
+                        </p>
+                      )}
                       <div className="flex flex-wrap items-center gap-2">
                         <Input
                           value={importUrl}
