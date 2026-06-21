@@ -14,8 +14,11 @@ import {
   Check,
   AlertTriangle,
 } from "lucide-react";
+import { metricTargetStatus } from "@workspace/metrics";
 import { cn } from "@/lib/utils";
 import { Eyebrow } from "@/components/cohort";
+
+export { metricTargetStatus };
 
 /* ── Audience (dual view) ─────────────────────────────────── */
 export type Audience = "gestor" | "platform";
@@ -258,47 +261,6 @@ export const METRIC_TARGETS: Record<string, string> = {
 };
 
 const NUM_FMT = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 });
-
-/* ── Target evaluation ────────────────────────────────────── */
-/**
- * Determines whether a metric value meets its goal.
- * Parses common target shapes: `≥ 85%`, `< 60 s`, `≤ 2%`, `0`,
- * ranges (`R$ 0,10–0,40`) and signed thresholds (`≥ +5pp`).
- * Returns `null` when the target is missing or not comparable
- * (e.g. `—`, `baseline ±20%`, or text without a number).
- */
-export function metricTargetStatus(
-  value: number,
-  target: string | undefined,
-): "on" | "off" | null {
-  if (!target) return null;
-  const t = target.trim();
-  if (!t || t === "—" || t === "-") return null;
-  // References to a baseline we don't have on the client are not comparable.
-  if (/baseline/i.test(t) || /±/.test(t)) return null;
-
-  // Normalize pt-BR decimals (comma → dot) for numeric parsing.
-  const norm = t.replace(/,/g, ".");
-
-  // Range like "R$ 0.10–0.40" (en/em dash between two numbers).
-  const range = norm.match(/(\d+(?:\.\d+)?)\s*[–—]\s*(\d+(?:\.\d+)?)/);
-  if (range) {
-    const lo = parseFloat(range[1]!);
-    const hi = parseFloat(range[2]!);
-    return value >= lo && value <= hi ? "on" : "off";
-  }
-
-  const numMatch = norm.match(/-?\d+(?:\.\d+)?/);
-  if (!numMatch) return null;
-  const num = parseFloat(numMatch[0]);
-
-  // "lower is better" operators.
-  if (/≤|<=|</.test(t)) return value <= num ? "on" : "off";
-  // "higher is better" operators.
-  if (/≥|>=|>/.test(t)) return value >= num ? "on" : "off";
-  // No operator (e.g. "0" violations) → treat as an upper bound.
-  return value <= num ? "on" : "off";
-}
 
 export function formatMetric(value: number, unit: string): string {
   if (unit === "R$") return `R$ ${NUM_FMT.format(value)}`;

@@ -4,6 +4,9 @@ import type {
   Severity,
   VerdictType,
 } from "@workspace/db";
+import { metricTargetStatus } from "@workspace/metrics";
+
+export { metricTargetStatus };
 
 export interface ProposedMetric {
   layer: LayerKey;
@@ -352,46 +355,6 @@ function severityFromScore(score: number): Severity {
   if (score < 60) return "high";
   if (score < 75) return "medium";
   return "stable";
-}
-
-/**
- * Determines whether a metric value meets its stored goal. Mirrors the client
- * `metricTargetStatus` (carteira.tsx) so the deterministic score and the UI
- * agree on what counts as on/off-target. The per-metric `target` string is the
- * source of truth. Returns `null` when the target is missing or not comparable
- * (e.g. `—`, `baseline ±20%`, or text without a number).
- */
-export function metricTargetStatus(
-  value: number,
-  target: string | undefined,
-): "on" | "off" | null {
-  if (!target) return null;
-  const t = target.trim();
-  if (!t || t === "—" || t === "-") return null;
-  // References to a baseline we don't have are not comparable.
-  if (/baseline/i.test(t) || /±/.test(t)) return null;
-
-  // Normalize pt-BR decimals (comma → dot) for numeric parsing.
-  const norm = t.replace(/,/g, ".");
-
-  // Range like "R$ 0.10–0.40" (en/em dash between two numbers).
-  const range = norm.match(/(\d+(?:\.\d+)?)\s*[–—]\s*(\d+(?:\.\d+)?)/);
-  if (range) {
-    const lo = parseFloat(range[1]!);
-    const hi = parseFloat(range[2]!);
-    return value >= lo && value <= hi ? "on" : "off";
-  }
-
-  const numMatch = norm.match(/-?\d+(?:\.\d+)?/);
-  if (!numMatch) return null;
-  const num = parseFloat(numMatch[0]);
-
-  // "lower is better" operators.
-  if (/≤|<=|</.test(t)) return value <= num ? "on" : "off";
-  // "higher is better" operators.
-  if (/≥|>=|>/.test(t)) return value >= num ? "on" : "off";
-  // No operator (e.g. "0" violations) → treat as an upper bound.
-  return value <= num ? "on" : "off";
 }
 
 // Generate a plausible deterministic value for a given unit.
