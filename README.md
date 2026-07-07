@@ -137,16 +137,20 @@ flowchart LR
 > Requer **Node.js 24**, **pnpm** e um **PostgreSQL** acessível via `DATABASE_URL`.
 
 ```bash
-# 1. Instalar dependências
+# 1. Copiar as variáveis de ambiente e preencher os valores
+cp .env.example .env
+
+# 2. Instalar dependências
 pnpm install
 
-# 2. Aplicar o schema do banco (ambiente de desenvolvimento)
-pnpm --filter @workspace/db run push
+# 3. Aplicar o schema do banco
+pnpm --filter @workspace/db run push        # dev: push rápido do schema
+# pnpm --filter @workspace/db run migrate     # prod: migrations versionadas (lib/db/drizzle)
 
-# 3. Subir a API (porta via variável PORT)
+# 4. Subir a API (porta via variável PORT)
 pnpm --filter @workspace/api-server run dev
 
-# 4. Em outro terminal, subir o frontend web
+# 5. Em outro terminal, subir o frontend web
 pnpm --filter @workspace/cohort run dev
 ```
 
@@ -154,19 +158,27 @@ Comandos úteis:
 
 ```bash
 pnpm run typecheck                               # typecheck de todos os pacotes
+pnpm test                                         # testes (Vitest)
 pnpm run build                                    # typecheck + build
+pnpm --filter @workspace/db run generate          # gerar nova migration após mudar o schema
 pnpm --filter @workspace/api-spec run codegen     # regenerar hooks e schemas a partir do OpenAPI
 ```
 
+> **Deploy:** a API compila num bundle self-contained e há um `Dockerfile` multi-stage pronto (`docker build -t cohort-api .`). Rode as migrations como passo de release (`pnpm --filter @workspace/db run migrate`). O frontend é um build estático do Vite, com deploy separado (Vercel/Netlify).
+
 ### Variáveis de ambiente
+
+Veja **[`.env.example`](.env.example)** para o catálogo completo (self-hosted vs Replit). Principais:
 
 | Variável | Obrigatória | Descrição |
 | --- | :---: | --- |
 | `DATABASE_URL` | ✅ | String de conexão do PostgreSQL. |
-| `PORT` | ✅ | Porta em que cada serviço escuta (injetada pelo ambiente). |
-| `SESSION_SECRET` | ✅ | Segredo de sessão do servidor. |
+| `PORT` | ✅ | Porta em que a API escuta. |
+| `AI_INTEGRATIONS_OPENAI_API_KEY` · `AI_INTEGRATIONS_OPENAI_BASE_URL` | ✅ | Credenciais do OpenAI (análise de agentes). No Replit são injetadas. |
+| `CLERK_SECRET_KEY` · `VITE_CLERK_PUBLISHABLE_KEY` | ✅¹ | Autenticação Clerk. |
+| `GITHUB_TOKEN` | — | Import de repositórios GitHub privados (opcional). |
 
-> Autenticação usa **Clerk gerenciado** — não é preciso configurar chaves manualmente em desenvolvimento.
+> ¹ No Replit a autenticação (Clerk) e o OpenAI são **gerenciados** — não precisa configurar chaves. Self-hosted, preencha as chaves acima com um projeto Clerk e uma chave OpenAI próprios.
 
 ### Vocabulário do produto
 
@@ -291,16 +303,20 @@ flowchart LR
 > Requires **Node.js 24**, **pnpm**, and a **PostgreSQL** reachable via `DATABASE_URL`.
 
 ```bash
-# 1. Install dependencies
+# 1. Copy the environment variables and fill in the values
+cp .env.example .env
+
+# 2. Install dependencies
 pnpm install
 
-# 2. Apply the database schema (development environment)
-pnpm --filter @workspace/db run push
+# 3. Apply the database schema
+pnpm --filter @workspace/db run push        # dev: fast schema push
+# pnpm --filter @workspace/db run migrate     # prod: versioned migrations (lib/db/drizzle)
 
-# 3. Start the API (port via the PORT variable)
+# 4. Start the API (port via the PORT variable)
 pnpm --filter @workspace/api-server run dev
 
-# 4. In another terminal, start the web frontend
+# 5. In another terminal, start the web frontend
 pnpm --filter @workspace/cohort run dev
 ```
 
@@ -308,19 +324,27 @@ Useful commands:
 
 ```bash
 pnpm run typecheck                               # typecheck every package
+pnpm test                                         # run tests (Vitest)
 pnpm run build                                    # typecheck + build
+pnpm --filter @workspace/db run generate          # generate a new migration after schema changes
 pnpm --filter @workspace/api-spec run codegen     # regenerate hooks and schemas from OpenAPI
 ```
 
+> **Deploy:** the API compiles to a self-contained bundle and ships a multi-stage `Dockerfile` (`docker build -t cohort-api .`). Run migrations as a release step (`pnpm --filter @workspace/db run migrate`). The frontend is a static Vite build, deployed separately (Vercel/Netlify).
+
 ### Environment variables
+
+See **[`.env.example`](.env.example)** for the full catalog (self-hosted vs Replit). Key ones:
 
 | Variable | Required | Description |
 | --- | :---: | --- |
 | `DATABASE_URL` | ✅ | PostgreSQL connection string. |
-| `PORT` | ✅ | Port each service listens on (injected by the environment). |
-| `SESSION_SECRET` | ✅ | Server session secret. |
+| `PORT` | ✅ | Port the API listens on. |
+| `AI_INTEGRATIONS_OPENAI_API_KEY` · `AI_INTEGRATIONS_OPENAI_BASE_URL` | ✅ | OpenAI credentials (agent analysis). Injected on Replit. |
+| `CLERK_SECRET_KEY` · `VITE_CLERK_PUBLISHABLE_KEY` | ✅¹ | Clerk authentication. |
+| `GITHUB_TOKEN` | — | Importing private GitHub repos (optional). |
 
-> Authentication uses **managed Clerk** — no manual key configuration needed in development.
+> ¹ On Replit, authentication (Clerk) and OpenAI are **managed** — no key configuration needed. Self-hosted, fill in the keys above with your own Clerk project and OpenAI key.
 
 ### Product vocabulary
 
