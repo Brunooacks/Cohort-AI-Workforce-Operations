@@ -109,7 +109,16 @@ function SignUpPage() {
   );
 }
 
+// With the local dev auth bypass the mock session is ALWAYS signed-in, which
+// would make "/" redirect straight to /comando and leave the landing page
+// unreachable (and "Sair" apparently broken, since it lands back on /comando).
+// In bypass mode "/" always shows the landing; "Entrar" leads to the app.
+const authDevBypass = import.meta.env.VITE_AUTH_DEV_BYPASS === "true";
+
 function HomeRedirect() {
+  if (authDevBypass) {
+    return <LandingPage />;
+  }
   return (
     <>
       <Show when="signed-in">

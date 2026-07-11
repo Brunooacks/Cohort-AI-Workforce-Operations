@@ -125,7 +125,7 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
           <div className="flex items-center gap-2.5">
             <CohortMark className="h-7 w-7" />
-            <span className="font-serif text-lg font-medium tracking-tight">Cohort</span>
+            <span className="font-serif text-lg font-medium tracking-tight">Muster</span>
             <span className="hidden font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground sm:inline">
               AI Workforce Operations
             </span>
@@ -159,7 +159,7 @@ export default function LandingPage() {
           Toda frota mente. <em className="italic text-primary">Os números confessam.</em>
         </h1>
         <p className="mt-6 max-w-[56ch] text-base leading-relaxed text-muted-foreground sm:text-lg">
-          Agentes de IA otimizam a métrica que você mede — não o resultado que você precisa. O Cohort
+          Agentes de IA otimizam a métrica que você mede — não o resultado que você precisa. O Muster
           cruza as 5 camadas (eficácia, eficiência, adoção, governança, valor), flagra o padrão
           antagônico e transforma cada contradição em uma decisão de comitê.
         </p>
@@ -251,7 +251,7 @@ export default function LandingPage() {
       <footer className="border-t border-primary/20">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-6 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
           <span className="flex items-center gap-2">
-            <CohortMark className="h-4 w-4" /> Cohort · AI Workforce Operations
+            <CohortMark className="h-4 w-4" /> Muster · AI Workforce Operations
           </span>
           <span>Identidade · Avaliação · Veredito</span>
         </div>

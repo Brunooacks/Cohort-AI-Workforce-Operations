@@ -1,6 +1,6 @@
-# Cohort
+# Muster (ex-Cohort)
 
-Cohort é uma plataforma plug-and-play que dá às frotas de agentes de IA (multi-plataforma) identidade, carteira de trabalho, análise de desempenho em 5 camadas e governança — para decidir entre **Promover, Mentorar ou Aposentar** cada agente.
+Muster é uma plataforma plug-and-play que dá às frotas de agentes de IA (multi-plataforma) identidade, carteira de trabalho, análise de desempenho em 5 camadas e governança — para decidir entre **Promover, Mentorar ou Aposentar** cada agente.
 
 ## Run & Operate
 

@@ -55,7 +55,7 @@ export function OpsSchematic({ className }: { className?: string }) {
     <svg
       viewBox="0 0 1120 430"
       role="img"
-      aria-label="Esquema animado do pipeline do Cohort: conectores alimentam a admissão, agentes atravessam a avaliação em cinco camadas sob o detector de vitória ilusória e saem com veredito de promover, mentorar ou aposentar."
+      aria-label="Esquema animado do pipeline do Muster: conectores alimentam a admissão, agentes atravessam a avaliação em cinco camadas sob o detector de vitória ilusória e saem com veredito de promover, mentorar ou aposentar."
       className={className}
       fontFamily="'IBM Plex Mono', Menlo, monospace"
     >
