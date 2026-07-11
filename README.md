@@ -62,9 +62,13 @@ Equipes estão colocando dezenas — em breve, milhares — de agentes de IA em 
 
 ### Telas
 
+![Landing — Sala de Operações](docs/screenshots/landing.png)
+
 | Frota (Portfólio) | Veredito + Detector de Vitória Ilusória |
 | :---: | :---: |
 | ![Frota](docs/screenshots/frota.png) | ![Veredito](docs/screenshots/veredito.png) |
+| **Admissão (Pré-assessment)** | **Conectores** |
+| ![Admissão](docs/screenshots/admissao.png) | ![Conectores](docs/screenshots/integracoes.png) |
 
 | Admissão (Carteira de Trabalho) | Probation |
 | :---: | :---: |
@@ -228,9 +232,13 @@ Teams are shipping dozens — soon thousands — of AI agents to production with
 
 ### Screens
 
+![Landing — Ops Room](docs/screenshots/landing.png)
+
 | Fleet (Portfolio) | Verdict + Illusory Victory Detector |
 | :---: | :---: |
 | ![Fleet](docs/screenshots/frota.png) | ![Verdict](docs/screenshots/veredito.png) |
+| **Admission (Pre-assessment)** | **Connectors** |
+| ![Admission](docs/screenshots/admissao.png) | ![Connectors](docs/screenshots/integracoes.png) |
 
 | Admission (Work Record) | Probation |
 | :---: | :---: |
