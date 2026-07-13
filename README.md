@@ -62,25 +62,15 @@ Equipes estão colocando dezenas — em breve, milhares — de agentes de IA em 
 
 ### Telas
 
-![Landing — Sala de Operações](docs/screenshots/landing.png)
+![Landing — Sala de Operações](docs/screenshots/muster-landing.png)
 
 | Frota (Portfólio) | Veredito + Detector de Vitória Ilusória |
 | :---: | :---: |
-| ![Frota](docs/screenshots/frota.png) | ![Veredito](docs/screenshots/veredito.png) |
-| **Admissão (Pré-assessment)** | **Conectores** |
-| ![Admissão](docs/screenshots/admissao.png) | ![Conectores](docs/screenshots/integracoes.png) |
-
-| Admissão (Carteira de Trabalho) | Probation |
-| :---: | :---: |
-| ![Admissão](docs/screenshots/admissao.png) | ![Probation](docs/screenshots/probation.png) |
-
-<div align="center">
-
-**Integrações / Conectores**
-
-<img alt="Integrações" src="docs/screenshots/integracoes.png" width="720">
-
-</div>
+| ![Frota](docs/screenshots/muster-frota.png) | ![Veredito](docs/screenshots/muster-veredito.png) |
+| **Admissão (⚡ Pré-assessment)** | **Conectores (cadastro + descoberta real)** |
+| ![Admissão](docs/screenshots/muster-admissao.png) | ![Conectores](docs/screenshots/muster-conectores.png) |
+| **Biblioteca de Métricas** | **Carteira de Trabalho (probation)** |
+| ![Métricas](docs/screenshots/muster-metricas.png) | ![Probation](docs/screenshots/muster-probation.png) |
 
 ### Arquitetura
 
@@ -232,25 +222,15 @@ Teams are shipping dozens — soon thousands — of AI agents to production with
 
 ### Screens
 
-![Landing — Ops Room](docs/screenshots/landing.png)
+![Landing — Ops Room](docs/screenshots/muster-landing.png)
 
 | Fleet (Portfolio) | Verdict + Illusory Victory Detector |
 | :---: | :---: |
-| ![Fleet](docs/screenshots/frota.png) | ![Verdict](docs/screenshots/veredito.png) |
-| **Admission (Pre-assessment)** | **Connectors** |
-| ![Admission](docs/screenshots/admissao.png) | ![Connectors](docs/screenshots/integracoes.png) |
-
-| Admission (Work Record) | Probation |
-| :---: | :---: |
-| ![Admission](docs/screenshots/admissao.png) | ![Probation](docs/screenshots/probation.png) |
-
-<div align="center">
-
-**Integrations / Connectors**
-
-<img alt="Integrations" src="docs/screenshots/integracoes.png" width="720">
-
-</div>
+| ![Fleet](docs/screenshots/muster-frota.png) | ![Verdict](docs/screenshots/muster-veredito.png) |
+| **Admission (⚡ Pre-assessment)** | **Connectors (register + real discovery)** |
+| ![Admission](docs/screenshots/muster-admissao.png) | ![Connectors](docs/screenshots/muster-conectores.png) |
+| **Metric Library** | **Work Record (probation)** |
+| ![Metrics](docs/screenshots/muster-metricas.png) | ![Probation](docs/screenshots/muster-probation.png) |
 
 ### Architecture
 
